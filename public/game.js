@@ -110,6 +110,19 @@ class Player {
         this.jump = 0;
         this.grounded = true;
     }
+    else {
+        this.grounded = false;
+    }
+    const wallLeft = 0;
+    const wallRight = canvas.width - 20; 
+    if (this.x <= wallLeft) {
+        this.x = wallLeft;
+        this.speed = 0;
+    }
+    else if (this.x >= wallRight) {
+        this.x = wallRight;
+        this.speed = 0;
+    }
     if ((keys.ArrowUp || keys2.W || keys.Space) && this.grounded) {
         this.jump -= jumpHeight;
         moved = true;
