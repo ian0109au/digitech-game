@@ -1,6 +1,6 @@
 const socket = io();
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+let canvas
+let ctx
 const fric = 0.1
 const accel = 1
 const maxSpeed = 5
