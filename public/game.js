@@ -5,7 +5,7 @@ const fric = 0.1
 const accel = 1
 const maxSpeed = 5
 const jumpHeight = 5
-const grav = 0.1
+let grav = 0.1
 
 let players = {};
 let localPlayer = null;
@@ -69,7 +69,6 @@ class Player {
     this.jump = 0;
     this.color = color;
     this.grounded = false;
-    let check = false;
     this.hitbox = {
       offsetX: 0,
       offsetY: 0,
@@ -128,7 +127,10 @@ class Player {
         moved = true;
     }
     if (keys.ArrowDown || keys2.S)  { 
-        //empty
+        grav = 0.5;
+    }
+    else {
+        grav = 0.1;
     }
     if (keys.ArrowLeft || keys2.A)  {
         this.speed = Math.min(this.speed + accel, maxSpeed);
