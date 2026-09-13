@@ -201,14 +201,14 @@ function cameraU() {
         if (camera.peak == 0) {
             camera.peak = limit;
         }
-        if (limit > canvas.height/2) {
-            limit = canvas.height/2;
-        }
         let bottom = camera.peak + camera.dip;
         if (limit > bottom) {
             limit = bottom;
         }
         camera.y += (limit - camera.y) * camera.scroll;
+        if (camera.y > canvas.height - camera.height) {
+            camera.y = canvas.height - camera.height;
+        }
     }
 }
 
