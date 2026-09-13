@@ -255,14 +255,14 @@ function update() {
     if (localPlayer) {
         localPlayer.update();
     }
-    cameraU(players);
+    cameraU();
     if (ctx && canvas) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.save();
         ctx.translate(0, -Math.floor(camera.y));
     for (let id in players) {
         if (id === myId && localPlayer) {
-            ctx.fillStyle = localPlayer.color; || '#00ff00';
+            ctx.fillStyle = localPlayer.color || '#00ff00';
             ctx.fillRect(players[id].x, players[id].y, 20, 20);
         }
         else {
