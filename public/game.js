@@ -201,8 +201,8 @@ function cameraU() {
         if (camera.peak == 0) {
             camera.peak = limit;
         }
-        if (limit > canvas.height) {
-            limit = canvas.height;
+        if (limit > canvas.height/2) {
+            limit = canvas.height/2;
         }
         let bottom = camera.peak + camera.dip;
         if (limit > bottom) {
