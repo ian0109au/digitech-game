@@ -190,9 +190,6 @@ function cameraU() {
         if (camera.peak == 0) {
             camera.peak = limit;
         }
-        if (limit < camera.peak) {
-            limit = camera.peak;
-        }
         let bottom = camera.peak + camera.dip;
         if (limit > bottom) {
             limit = bottom;
