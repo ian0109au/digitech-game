@@ -187,6 +187,9 @@ function cameraU() {
     const topPlayer = topPlayer(players);
     if (topPlayer != null) {
         let limit = topPlayer.y - camera.padding;
+        if (camera.peak == 0) {
+            camera.peak = limit;
+        }
         if (limit < camera.peak) {
             limit = camera.peak;
         }
@@ -218,6 +221,7 @@ window.addEventListener('keyup', (e) => {
 
 socket.on('connect', () => {
     myId = socket.id;
+    socket.emit('requestPlayers'); 
 });
 
 socket.on('currentPlayers', (serverPlayers) => {
