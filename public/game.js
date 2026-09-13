@@ -10,7 +10,8 @@ const camera = {
     width: 800,
     height: 600,
     scroll: 0.1,
-    padding: 200,
+    paddingTop: 150,
+    paddingBottom: 250,
     peak: 0,
     dip: 900
 };
@@ -188,11 +189,11 @@ function cameraU() {
     const leadPlayer = topPlayer(players);
     if (leadPlayer != null) {
         const screenY = leadPlayer.y - camera.y;
-        if (screenY < 0 + camera.padding) {
-            limit = leadPlayer.y - camera.padding;
+        if (screenY < 0 + camera.paddingTop) {
+            limit = leadPlayer.y - camera.paddingTop;
         }
-        else if (screenY > camera.height - camera.padding) {  
-            limit = leadPlayer.y - camera.height + camera.padding;
+        else if (screenY > camera.height - camera.paddingBottom) {  
+            limit = leadPlayer.y - camera.height + camera.paddingBottom;
         }
         else {
             limit = camera.y;
