@@ -21,7 +21,7 @@ class ServerPlayer {
 io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
     const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-    players[socket.id] = new ServerPlayer(100, 100, randomColor);
+    players[socket.id] = new ServerPlayer(100, 580, randomColor);
     socket.emit('currentPlayers', players);
     socket.broadcast.emit('newPlayer', { id: socket.id, player: players[socket.id] });
     socket.on('playerMovement', (movementData) => {
