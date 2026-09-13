@@ -150,9 +150,9 @@ class Player {
     this.y += this.jump;
     this.x -= this.speed; 
     moved = true;
-    if (moved) {             
+    if (moved) {
         socket.emit('playerMovement', { x: this.x, y: this.y });         
-    }    
+    }
   }
 }
 
@@ -182,17 +182,17 @@ window.addEventListener('keyup', (e) => {
 });
 
 socket.on('connect', () => {
-    myId = socket.id; 
+    myId = socket.id;
 });
 
-socket.on('currentPlayers', (serverPlayers) => { 
+socket.on('currentPlayers', (serverPlayers) => {
     players = serverPlayers;
-    if (players[myId] && !localPlayer) { 
+    if (players[myId] && !localPlayer) {
         const sData = players[myId];
         localPlayer = new Player(sData.x, sData.y, sData.color);
     }
 });
-socket.on('newPlayer', (data) => { 
+socket.on('newPlayer', (data) => {
     players[data.id] = data.player; 
 });
 socket.on('playerMoved', (data) => {
@@ -201,7 +201,7 @@ socket.on('playerMoved', (data) => {
         players[data.id].y = data.y;
     }
 });
-socket.on('playerDisconnected', (id) => { 
+socket.on('playerDisconnected', (id) => {
     delete players[id]; 
 });
 const levelPlatforms = [
@@ -217,7 +217,7 @@ function update() {
         localPlayer.update();
     }
     for (let id in players) {
-        if (players[id].floorY <= 200) {
+        if (players[id].y <= 200) {
             for (let loop = 0; loop < levelPlatforms.length; loop++) {
                 levelPlatforms[loop].y += players[id].jump;
                 for (let id2 in players) {
