@@ -187,11 +187,11 @@ function cameraU() {
     let limit = 0; 
     const leadPlayer = topPlayer(players);
     if (leadPlayer != null) {
-        if(leadPlayer.y < 0 + camera.padding) {
+        if (leadPlayer.y < 0 + camera.padding) {
             limit = leadPlayer.y - camera.padding;
         }
         else if (leadPlayer.y > camera.height - camera.padding) {  
-            limit = leadPlayer.y + camera.padding;
+            limit = leadPlayer.y - camera.height + camera.padding;
         }
         else {
             limit = camera.y;
