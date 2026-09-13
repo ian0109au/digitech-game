@@ -175,28 +175,31 @@ class Platform {
   }
 }
 function topPlayer(players) {
-    let topPlay = players[0];
+    let topPlay = null;
     for (let id in players) {
-        if (players[id].y < topPlay.y) {
+        if (topPlay === null || players[id].y < topPlay.y) {
             topPlay = players[id];
         }
     }
     return topPlay;
 }
 function cameraU() {
-    const topPlayer = topPlayer(players);
-    let limit = topPlayer.y - camera.padding;
-    if (limit < camera.peak) {
-        limit = camera.peak;
+    let topPlayer = null;
+    topPlayer = topPlayer(players);
+    if (topPlayer != null) {
+        let limit = topPlayer.y - camera.padding;
+        if (limit < camera.peak) {
+            limit = camera.peak;
+        }
+        let bottom = camera.peak + camera.dip;
+        if (limit > bottom) {
+            limit = bottom;
+        }
+        if (limit < 0) {
+            limit = 0;
+        }
+        camera.y += (limit - camera.y) * camera.scroll;
     }
-    let bottom = camera.peak + camera.dip;
-    if (limit > bottom) {
-        limit = bottom;
-    }
-    if (limit < 0) {
-        limit = 0;
-    }
-    camera.y += (limit - camera.y) * camera.scroll;
 }
 
 const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, Space: false};
