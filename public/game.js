@@ -219,13 +219,6 @@ function update() {
     let scroll = false;
     for (let id in players) {
         if (players[id].y <= 200) {
-            players[id].y = 201;
-            for (let id2 in players) {
-                players[id2].y += players[id].jump;
-            }
-            for (let loop = 0; loop < levelPlatforms.length; loop++) {
-                levelPlatforms[loop].y += players[id].jump;
-            }
             scroll = true;
         }
         if (scroll === true) break;
