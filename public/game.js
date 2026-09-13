@@ -256,9 +256,10 @@ function update() {
         localPlayer.update();
     }
     cameraU(players);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.translate(0, -Math.floor(camera.y));
+    if (ctx && canvas) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(0, -Math.floor(camera.y));
     for (let id in players) {
         if (id === myId && localPlayer) {
             ctx.fillStyle = localPlayer.color; || '#00ff00';
@@ -277,4 +278,12 @@ function update() {
 
     requestAnimationFrame(update);
 }
-requestAnimationFrame(update);
+window.onload = () => {
+    canvas = document.getElementById('gameCanvas');
+    if (canvas) {
+        ctx = canvas.getContext('2d');
+        requestAnimationFrame(update);
+    } else {
+        console.error("Could not find canvas element with ID 'gameCanvas'");
+    }
+};
