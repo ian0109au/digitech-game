@@ -209,7 +209,7 @@ const levelPlatforms = [
   new Platform(200, 400, 100, 20, 'solid'),
   new Platform(350, 300, 200, 20, 'pass'),
   new Platform(600, 200, 150, 20, 'solid'),
-  new Platform(100, 100, 100, 20, 'pass')
+  new Platform(100, 100, 100, 20, 'solid')
 ];
 
 function update() {
