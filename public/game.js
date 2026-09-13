@@ -184,9 +184,9 @@ function topPlayer(players) {
     return topPlay;
 }
 function cameraU() {
-    const topPlayer = topPlayer(players);
-    if (topPlayer != null) {
-        let limit = topPlayer.y - camera.padding;
+    const leadPlayer = topPlayer(players);
+    if (leadPlayer != null) {
+        let limit = leadPlayer.y - camera.padding;
         if (camera.peak == 0) {
             camera.peak = limit;
         }
