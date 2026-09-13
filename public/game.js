@@ -263,7 +263,7 @@ function update() {
     for (let id in players) {
         if (id === myId && localPlayer) {
             ctx.fillStyle = localPlayer.color || '#00ff00';
-            ctx.fillRect(players[id].x, players[id].y, 20, 20);
+            ctx.fillRect(localPlayer.x, localPlayer.y, 20, 20);
         }
         else {
             ctx.fillStyle = players[id].color || '#ffffff';
