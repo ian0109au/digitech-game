@@ -218,6 +218,7 @@ function update() {
     }
     for (let id in players) {
         if (players[id].y <= 200) {
+            players[id].y = 200;
             for (let loop = 0; loop < levelPlatforms.length; loop++) {
                 levelPlatforms[loop].y += players[id].jump;
                 for (let id2 in players) {
