@@ -184,8 +184,7 @@ function topPlayer(players) {
     return topPlay;
 }
 function cameraU() {
-    let topPlayer = null;
-    topPlayer = topPlayer(players);
+    const topPlayer = topPlayer(players);
     if (topPlayer != null) {
         let limit = topPlayer.y - camera.padding;
         if (limit < camera.peak) {
@@ -258,7 +257,7 @@ function update() {
     ctx.translate(0, -Math.floor(camera.y));
     for (let id in players) {
         if (id === myId && localPlayer) {
-            ctx.fillStyle = players[id].color;
+            ctx.fillStyle = localPlayer.color; || '#00ff00';
             ctx.fillRect(players[id].x, players[id].y, 20, 20);
         }
         else {
