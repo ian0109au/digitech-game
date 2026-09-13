@@ -206,12 +206,25 @@ socket.on('playerDisconnected', (id) => {
 });
 const levelPlatforms = [
   new Platform(50, 500, 150, 20, 'pass'),
-  new Platform(200, 400, 100, 20, 'solid')
+  new Platform(200, 400, 100, 20, 'solid'),
+  new Platform(350, 300, 200, 20, 'pass'),
+  new Platform(600, 200, 150, 20, 'solid'),
+  new Platform(100, 100, 100, 20, 'pass')
 ];
 
 function update() {
     if (localPlayer) {
         localPlayer.update();
+    }
+    for (let id in players) {
+        if (players[id].floorY <= 200) {
+            for (let loop = 0; loop < levelPlatforms.length; loop++) {
+                levelPlatforms[loop].y += players[id].jump;
+                for (let id2 in players) {
+                    players[id2].y += players[id].jump;
+                }
+            }
+        }
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (let id in players) {
