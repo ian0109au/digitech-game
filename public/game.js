@@ -283,6 +283,8 @@ window.onload = () => {
     canvas = document.getElementById('gameCanvas');
     if (canvas) {
         ctx = canvas.getContext('2d');
+        canvas.width = camera.width;
+        canvas.height = camera.height;
         requestAnimationFrame(update);
     } else {
         console.error("Could not find canvas element with ID 'gameCanvas'");
