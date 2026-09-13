@@ -5,6 +5,15 @@ const fric = 0.1
 const accel = 1
 const maxSpeed = 5
 const jumpHeight = 5
+const camera = {
+    y: 0,
+    width: 800,
+    height: 600,
+    scroll: 0.1,
+    padding: 150
+    peak: 0
+    dip: 900
+};
 let grav = 0.1
 
 let players = {};
@@ -165,6 +174,30 @@ class Platform {
     this.type = type;
   }
 }
+function topPlayer(players) {
+    let topPlay = players[0];
+    for (let id in players) {
+        if (players[id].y < topPlay.y) {
+            topPlay = players[id];
+        }
+    }
+    return topPlay;
+}
+function cameraU() {
+    const topPlayer = topPlayer(players);
+    let limit = topPlayer.y - camera.padding;
+    if (limit < camera.peak) {
+        limit = camera.peak;
+    }
+    let bottom = camera.peak + camera.dip;
+    if (limit > bottom) {
+        limit = bottom;
+    }
+    if (limit < 0) {
+        limit = 0;
+    }
+    camera.y += (limit - camera.y) * camera.scroll;
+}
 
 const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, Space: false};
 const keys2 = { W: false, A: false, S: false, D: false};
@@ -216,14 +249,10 @@ function update() {
     if (localPlayer) {
         localPlayer.update();
     }
-    let scroll = false;
-    for (let id in players) {
-        if (players[id].y <= 200) {
-            scroll = true;
-        }
-        if (scroll === true) break;
-    }
+    cameraU(players);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(0, -Math.floor(camera.y));
     for (let id in players) {
         if (id === myId && localPlayer) {
             ctx.fillStyle = players[id].color;
@@ -238,6 +267,7 @@ function update() {
         ctx.fillStyle = platform.type === 'solid' ? '#8B4513' : '#228B22';
         ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
     });
+    ctx.restore();
 
     requestAnimationFrame(update);
 }
