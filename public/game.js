@@ -10,8 +10,8 @@ const camera = {
     width: 800,
     height: 600,
     scroll: 0.1,
-    padding: 150
-    peak: 0
+    padding: 150,
+    peak: 0,
     dip: 900
 };
 let grav = 0.1
