@@ -278,6 +278,7 @@ function update() {
 
     requestAnimationFrame(update);
 }
+}
 window.onload = () => {
     canvas = document.getElementById('gameCanvas');
     if (canvas) {
@@ -286,4 +287,4 @@ window.onload = () => {
     } else {
         console.error("Could not find canvas element with ID 'gameCanvas'");
     }
-};
+}
