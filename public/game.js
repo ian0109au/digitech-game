@@ -100,6 +100,7 @@ class Player {
         };
     }
     update() {
+        let oneTime = false;
         let check = false;
         this.grounded = false;
         for (let platform of platforms) {
@@ -111,8 +112,9 @@ class Player {
             }
             else if (platform.type === 'boost') {
                 check = col.resolveBoost(this, platform);
-                if (check){
+                if (check && !oneTime) {
                     col.resolveBoost(this, platform);
+                    oneTime = true;
                 }
             }
             if (check) {
