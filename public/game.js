@@ -4,7 +4,7 @@ let ctx;
 const fric = 0.1;
 const accel = 1;
 const maxSpeed = 5;
-let jumpHeight = 5.2;
+let jumpHeight = 5;
 const camera = {
     y: 0,
     width: 800,
@@ -274,7 +274,7 @@ function generate(target) {
     let xurrent = highest.x
 
     while (current > target) {
-        const gap = random(60, 130);
+        const gap = random(60, 110);
         current -= gap;
 
         const width = random(60, 180);
