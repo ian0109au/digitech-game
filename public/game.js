@@ -294,7 +294,7 @@ function generate(target) {
 }
 function clean() {
     let bottom = camera.peak + camera.dip;
-    platforms = platforms.filter(p => p.y > bottom);
+    platforms = platforms.filter(p => p.y < bottom);
 }
 
 function update() {
