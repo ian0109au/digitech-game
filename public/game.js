@@ -4,7 +4,7 @@ let ctx;
 const fric = 0.1;
 const accel = 1;
 const maxSpeed = 5;
-const jumpHeight = 5;
+let jumpHeight = 5;
 const camera = {
     y: 0,
     width: 800,
@@ -67,7 +67,7 @@ class col {
             } else {
                 player.y += overlapY;
                 if (platform.type === 'boost') {
-                    player.jump = 8; 
+                    jumpHeight = 8;
                 } else {
                     player.jump = 0;
                 }
@@ -140,6 +140,9 @@ class Player {
         if ((keys.ArrowUp || keys2.W || keys.Space) && this.grounded) {
             this.jump -= jumpHeight;
             moved = true;
+            if (jumpHeight == 8) {
+                jumpHeight = 5;
+            }
         }
         if (keys.ArrowDown || keys2.S) { 
             grav = 0.5;
