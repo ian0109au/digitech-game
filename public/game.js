@@ -281,7 +281,7 @@ function generate(target) {
         const xap = random(0, 600);
         const x = random(Math.max(xap, 0), Math.min(xap, canvas.width - width));
         const ty = random(0, 11);
-        if (ty >= 5 || xap*gap >= 50000){
+        if (ty >= 6 || xap*gap >= 50000 || gap >= 115){
              typ = 'solid' 
         } else if (ty >= 2) {
             typ = 'pass'
