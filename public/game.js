@@ -4,7 +4,7 @@ let ctx
 const fric = 0.1
 const accel = 1
 const maxSpeed = 5
-const jumpHeight = 5
+const jumpHeight = 5.5
 const camera = {
     y: 0,
     width: 800,
@@ -251,19 +251,35 @@ socket.on('playerMoved', (data) => {
 socket.on('playerDisconnected', (id) => {
     delete players[id]; 
 });
-const levelPlatforms = [
-  new Platform(50, 500, 150, 20, 'pass'),
-  new Platform(200, 400, 100, 20, 'solid'),
-  new Platform(350, 300, 200, 20, 'pass'),
-  new Platform(600, 200, 150, 20, 'solid'),
-  new Platform(100, 100, 100, 20, 'solid')
-];
+function random(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function generate(target) {
+    let highest = platforms.reduce((min, p) => p.y < min.y ? p : min, platforms);
+    let current = highest.y;
 
+    while (current > target) {
+        const gap = random(50, 150);
+        current -= gap;
+
+        const width = random(50, 200);
+        const x = random(0, canvas.width - width);
+
+        platforms.push({ x, y: current, width });
+    }
+}
+
+function clean() {
+    const lowest = camera.y + VIEW.height;
+    platforms = platforms.filter(p => p.y < lowest);
+}
 function update() {
     if (localPlayer) {
         localPlayer.update();
     }
     cameraU();
+    generatePlatforms(camera.y - 200);
+    clean();
     if (ctx && canvas) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.save();
