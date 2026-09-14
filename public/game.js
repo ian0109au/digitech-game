@@ -4,7 +4,7 @@ let ctx;
 const fric = 0.1;
 const accel = 1;
 const maxSpeed = 5;
-const jumpHeight = 6;
+let jumpHeight = 5;
 const camera = {
     y: 0,
     width: 800,
@@ -67,9 +67,10 @@ class col {
             } else {
                 player.y += overlapY;
                 if (platform.type === 'boost') {
-                    player.jump -= 8; 
+                    jumpHeight = 8; 
                 } else {
                     player.jump = 0;
+                    jumpHeight = 6;
                 }
             }
         }
@@ -267,17 +268,19 @@ function generate(target) {
     if (platforms.length === 0) return;
     let highest = platforms.reduce((min, p) => p.y < min.y ? p : min, platforms[0]);
     let current = highest.y;
+    let xurrent = highest.x
 
     while (current > target) {
         const gap = random(60, 130);
         current -= gap;
 
         const width = random(60, 180);
-        const x = random(0, canvas.width - width);
-        const ty = random(0, 2);
-        if (ty === 0){
+        const xap = random(0, 600);
+        const x = random(Math.max(xap, 0), Math.min(xap, canvas.width - width));
+        const ty = random(0, 11);
+        if (ty >= 6){
              typ = 'solid' 
-        } else if (ty === 1) {
+        } else if (ty >= 2) {
             typ = 'pass'
         } else {
             typ = 'boost'
