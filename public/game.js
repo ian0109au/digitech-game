@@ -66,13 +66,14 @@ class col {
                 player.y -= overlapY;
             } else {
                 player.y += overlapY;
-                player.jump = 0;
+                if (platform.type === 'boost') {
+                    player.jump -= 8; 
+                } else {
+                    player.jump = 0;
+                }
             }
         }
         return true;
-    }
-    static resolveBoost(player){
-        player.jump -= 8
     }
 }
 
@@ -110,10 +111,7 @@ class Player {
                 check = col.resolvePass(this, platform);
             }
             else if (platform.type === 'boost') {
-                check = col.resolveBoost(this, platform);
-                if (check) {
-                    col.resolveBoost(this)
-                }
+                check = col.resolveSolid(this, platform);
             }
             if (check) {
                 break;
