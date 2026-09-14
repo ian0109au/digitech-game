@@ -112,7 +112,7 @@ class Player {
             else if (platform.type === 'boost') {
                 check = col.resolveBoost(this, platform);
                 if (check){
-                    col.resolveBoost(this, platform);
+                    this.grounded = true;
                 }
             }
             if (check) {
