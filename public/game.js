@@ -4,7 +4,7 @@ let ctx;
 const fric = 0.1;
 const accel = 1;
 const maxSpeed = 5;
-const jumpHeight = 5.5;
+const jumpHeight = 6;
 const camera = {
     y: 0,
     width: 800,
@@ -71,6 +71,9 @@ class col {
         }
         return true;
     }
+    static resolveBoost(player, platform){
+        player.jump += 8
+    }
 }
 
 class Player {
@@ -105,6 +108,12 @@ class Player {
             } 
             else if (platform.type === 'pass') {
                 check = col.resolvePass(this, platform);
+            }
+            else if (platform.type === 'boost') {
+                check = col.resolveBoost(this, platform);
+                if (check){
+                    col.resolveBoost(this, platform);
+                }
             }
             if (check) {
                 break;
@@ -256,7 +265,6 @@ function random(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// FIXED: Renamed loop reference variable names to prevent runtime exceptions
 function generate(target) {
     if (platforms.length === 0) return;
     let highest = platforms.reduce((min, p) => p.y < min.y ? p : min, platforms[0]);
@@ -268,15 +276,20 @@ function generate(target) {
 
         const width = random(60, 180);
         const x = random(0, canvas.width - width);
-        const ty = random(0, 1);
-        const typ = (ty === 0) ? 'solid' : 'pass';
+        const ty = random(0, 2);
+        if (ty === 0){
+             typ = 'solid' 
+        } else if (ty === 1) {
+            typ = 'pass'
+        } else {
+            typ = 'boost'
+        }
         
         platforms.push({ x, y: current, width, height: 15, type: typ });
     }
 }
 function clean() {
-    const lowest = camera.y + camera.height + 150;
-    platforms = platforms.filter(p => p.y < lowest);
+    platforms = platforms.filter(p => p.y < bottom);
 }
 
 function update() {
@@ -305,6 +318,7 @@ function update() {
 
         platforms.forEach(platform => {
             ctx.fillStyle = platform.type === 'solid' ? 'rgb(139, 69, 19)' : 'rgb(34, 139, 34)';
+            ctx.fillStyle = platform.type === 'boost' ? 'rgb(0, 150, 255)' : ctx.fillStyle;
             ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
         });
         ctx.restore();
