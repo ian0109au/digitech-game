@@ -61,6 +61,9 @@ class col {
                 player.x += overlapX;
             }
             player.speed = 0;
+            if (platform.type === 'boost') {
+                jumpHeight = 8;
+            } 
         } else {
             if (box.y + box.height / 2 < platform.y + platform.height / 2) {
                 player.y -= overlapY;
