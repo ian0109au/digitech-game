@@ -72,7 +72,7 @@ class col {
         return true;
     }
     static resolveBoost(player, platform){
-        player.jump += 8
+        player.jump -= 8
     }
 }
 
