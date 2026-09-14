@@ -92,6 +92,7 @@ class Player {
             width: 20,
             height: 20
         };
+        this.screenY = 0
     }
     getHitbox() {
         return {
@@ -168,6 +169,8 @@ class Player {
         }
         this.y += this.jump;
         this.x -= this.speed; 
+        
+        this.screenY = this.y - camera.y;
 
         if (moved) {
             socket.emit('playerMovement', { x: this.x, y: this.y });         
@@ -199,11 +202,10 @@ function cameraU() {
     let limit = 0; 
     const leadPlayer = topPlayer(players);
     if (leadPlayer != null) {
-        const screenY = leadPlayer.y - camera.y;
-        if (screenY < 0 + camera.paddingTop) {
+        if (leadPlayer.screenY < 0 + camera.paddingTop) {
             limit = leadPlayer.y - camera.paddingTop;
         }
-        else if (screenY > camera.height - camera.paddingBottom) {  
+        else if (leadPlayer.screenY > camera.height - camera.paddingBottom) {  
             limit = leadPlayer.y - camera.height + camera.paddingBottom;
         }
         else {
