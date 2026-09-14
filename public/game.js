@@ -16,6 +16,7 @@ const camera = {
     dip: 900
 };
 let grav = 0.1
+let platforms = []
 
 let players = {};
 let localPlayer = null;
@@ -97,7 +98,7 @@ class Player {
   update() {
     let check = false;
     this.grounded = false;
-    for (let platform of levelPlatforms) {
+    for (let platform of platforms) {
         if (platform.type === 'solid') {
       check = col.resolveSolid(this, platform);
         } 
@@ -294,7 +295,7 @@ function update() {
             ctx.fillRect(players[id].x, players[id].y, 20, 20);
         }
     }
-    levelPlatforms.forEach(platform => {
+    platforms.forEach(platform => {
         ctx.fillStyle = platform.type === 'solid' ? '#8B4513' : '#228B22';
         ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
     });
