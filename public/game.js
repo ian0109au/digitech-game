@@ -51,6 +51,10 @@ class col {
 
         if (!this.checkAABB(box, platform)) return false;
 
+        if (platform.type === 'boost') {
+            jumpHeight = 8;
+        } 
+
         const overlapX = Math.min(box.x + box.width, platform.x + platform.width) - Math.max(box.x, platform.x);
         const overlapY = Math.min(box.y + box.height, platform.y + platform.height) - Math.max(box.y, platform.y);
 
@@ -61,19 +65,13 @@ class col {
                 player.x += overlapX;
             }
             player.speed = 0;
-            if (platform.type === 'boost') {
-                jumpHeight = 8;
-            } 
         } else {
             if (box.y + box.height / 2 < platform.y + platform.height / 2) {
                 player.y -= overlapY;
             } else {
                 player.y += overlapY;
-                if (platform.type === 'boost') {
-                    jumpHeight = 8;
-                } else {
-                    player.jump = 0;
-                }
+                player.jump = 0;
+                
             }
         }
         return true;
