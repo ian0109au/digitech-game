@@ -278,10 +278,10 @@ function generate(target) {
         current -= gap;
 
         const width = random(60, 180);
-        const xap = random(0, 600);
+        const xap = random(0, 550);
         const x = random(Math.max(xap, 0), Math.min(xap, canvas.width - width));
         const ty = random(0, 11);
-        if (ty >= 6 || xap*gap >= 50000 || gap >= 115){
+        if (ty >= 6 || xap*gap >= 50000 || gap >= 115 || xap >= 500){
              typ = 'solid' 
         } else if (ty >= 2) {
             typ = 'pass'
