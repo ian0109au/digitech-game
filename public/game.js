@@ -71,7 +71,7 @@ class col {
         }
         return true;
     }
-    static resolveBoost(player, platform){
+    static resolveBoost(player){
         player.jump -= 8
     }
 }
@@ -100,7 +100,6 @@ class Player {
         };
     }
     update() {
-        let oneTime = false;
         let check = false;
         this.grounded = false;
         for (let platform of platforms) {
@@ -112,9 +111,8 @@ class Player {
             }
             else if (platform.type === 'boost') {
                 check = col.resolveBoost(this, platform);
-                if (check && !oneTime) {
-                    col.resolveBoost(this, platform);
-                    oneTime = true;
+                if (check) {
+                    col.resolveBoost(this)
                 }
             }
             if (check) {
