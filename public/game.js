@@ -274,14 +274,14 @@ function generate(target) {
     let xurrent = highest.x
 
     while (current > target) {
-        const gap = random(60, 110);
+        const gap = random(60, 130);
         current -= gap;
 
         const width = random(60, 180);
         const xap = random(0, 600);
         const x = random(Math.max(xap, 0), Math.min(xap, canvas.width - width));
         const ty = random(0, 11);
-        if (ty >= 6){
+        if (ty >= 5 || xap*gap >= 50000){
              typ = 'solid' 
         } else if (ty >= 2) {
             typ = 'pass'
