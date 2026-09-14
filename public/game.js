@@ -205,8 +205,8 @@ function cameraU() {
         if (limit > bottom) {
             limit = bottom;
         }
-        if (camera.y > 0) {
-            camera.y = 0;
+        if (limit > 0) {
+            limit = 0;
         }
         camera.y += (limit - camera.y) * camera.scroll;
     }
