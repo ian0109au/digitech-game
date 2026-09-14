@@ -256,7 +256,7 @@ function random(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 function generate(target) {
-    let highest = platforms.reduce((min, p) => p.y < min.y ? p : min, platforms);
+    let highest = platforms.reduce((min, p) => p.y < min.y ? p : min, platforms[0]);
     let current = highest.y;
 
     while (current > target) {
@@ -265,8 +265,14 @@ function generate(target) {
 
         const width = random(50, 200);
         const x = random(0, canvas.width - width);
-
-        platforms.push({ x, y: current, width });
+        const ty = random(0, 1)
+        if (ty === 0) {
+            typ = 'solid';
+        }
+        else {
+            typ = 'pass';
+        }
+        platforms.push({ x, y: current, width, height: 20, type: typ });
     }
 }
 
