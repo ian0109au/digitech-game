@@ -13,7 +13,7 @@ const camera = {
     paddingTop: 150,
     paddingBottom: 250,
     peak: 0,
-    dip: 900
+    dip: 450
 };
 let grav = 0.1;
 let platforms = [
