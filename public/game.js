@@ -293,7 +293,7 @@ function generate(target) {
     }
 }
 function clean() {
-    let bottom = camera.height + camera.dip;
+    let bottom = camera.peak + camera.dip;
     platforms = platforms.filter(p => p.y < bottom);
 }
 
