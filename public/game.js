@@ -157,8 +157,7 @@ class Player {
         }
         this.y += this.jump;
         this.x -= this.speed; 
-        
-        moved = true;
+
         if (moved) {
             socket.emit('playerMovement', { x: this.x, y: this.y });         
         }
@@ -292,17 +291,17 @@ function update() {
 
         for (let id in players) {
             if (id === myId && localPlayer) {
-                ctx.fillStyle = localPlayer.color || rgb(0, 255, 0);
+                ctx.fillStyle = localPlayer.color || 'rgb(0, 255, 0)';
                 ctx.fillRect(localPlayer.x, localPlayer.y, 20, 20);
             }
             else {
-                ctx.fillStyle = players[id].color || rgb(255, 255, 255);
+                ctx.fillStyle = players[id].color || 'rgb(255, 255, 255)';
                 ctx.fillRect(players[id].x, players[id].y, 20, 20);
             }
         }
 
         platforms.forEach(platform => {
-            ctx.fillStyle = platform.type === 'solid' ? rgb(139, 69, 19) : rgb(34, 139, 34);
+            ctx.fillStyle = platform.type === 'solid' ? 'rgb(139, 69, 19)' : 'rgb(34, 139, 34)';
             ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
         });
         ctx.restore();
