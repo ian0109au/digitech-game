@@ -19,11 +19,13 @@ let grav = 0.1;
 let platforms = [
     { x: 0, y: 580, width: 800, height: 20, type: 'solid' }
 ];
-
 let players = {};
+let alivePlayers = {};
+ 
 let localPlayer = null;
 let myId = null;
-
+let lastFrameTime = null;
+ 
 class col {
     static checkAABB(a, b) {
         return a.x < b.x + b.width &&
@@ -33,12 +35,12 @@ class col {
     }
     static resolvePass(player, platform) {
         const box = player.getHitbox();
-
+ 
         if (this.checkAABB(box, platform)) {
             const isFalling = player.jump > 0;
             const playerFeet = box.y + box.height;
             const wasAboveBefore = (playerFeet - player.jump) <= platform.y + 4;
-
+ 
             if (isFalling && wasAboveBefore) {
                 player.y = platform.y - player.hitbox.offsetY - player.hitbox.height;
                 return true;
@@ -48,16 +50,16 @@ class col {
     }
     static resolveSolid(player, platform) {
         const box = player.getHitbox();
-
+ 
         if (!this.checkAABB(box, platform)) return false;
-
+ 
         if (platform.type === 'boost') {
             jumpHeight = 8;
-        } 
-
+        }
+ 
         const overlapX = Math.min(box.x + box.width, platform.x + platform.width) - Math.max(box.x, platform.x);
         const overlapY = Math.min(box.y + box.height, platform.y + platform.height) - Math.max(box.y, platform.y);
-
+ 
         if (overlapX < overlapY) {
             if (box.x + box.width / 2 < platform.x + platform.width / 2) {
                 player.x -= overlapX;
@@ -71,13 +73,13 @@ class col {
             } else {
                 player.y += overlapY;
                 player.jump = 0;
-                
+ 
             }
         }
         return true;
     }
 }
-
+ 
 class Player {
     constructor(x, y, color) {
         this.x = x;
@@ -92,7 +94,9 @@ class Player {
             width: 20,
             height: 20
         };
-        this.screenY = 0
+        this.screenY = 0;
+        this.alive = true;
+        this.offScreenTimer = 0;
     }
     getHitbox() {
         return {
@@ -102,13 +106,24 @@ class Player {
             height: this.hitbox.height
         };
     }
-    update() {
+    die() {
+        if (!this.alive) return;
+        this.alive = false;
+        this.speed = 0;
+        this.jump = 0;
+        this.offScreenTimer = 0;
+        socket.emit('playerDied');
+    }
+    update(dt) {
+        if (!this.alive) return; 
+        dt = dt || 1 / 60;
+ 
         let check = false;
         this.grounded = false;
         for (let platform of platforms) {
             if (platform.type === 'solid') {
                 check = col.resolveSolid(this, platform);
-            } 
+            }
             else if (platform.type === 'pass') {
                 check = col.resolvePass(this, platform);
             }
@@ -119,7 +134,7 @@ class Player {
                 break;
             }
         }
-        
+ 
         let moved = false;
         if (check) {
             this.jump = 0;
@@ -128,9 +143,9 @@ class Player {
         else {
             this.grounded = false;
         }
-
+ 
         const wallLeft = 0;
-        const wallRight = canvas.width - 20; 
+        const wallRight = canvas.width - 20;
         if (this.x <= wallLeft) {
             this.x = wallLeft;
             this.speed = 0;
@@ -146,7 +161,7 @@ class Player {
                 jumpHeight = 5;
             }
         }
-        if (keys.ArrowDown || keys2.S) { 
+        if (keys.ArrowDown || keys2.S) {
             grav = 0.5;
         }
         else {
@@ -168,16 +183,26 @@ class Player {
             this.speed = Math.min(this.speed + fric, 0);
         }
         this.y += this.jump;
-        this.x -= this.speed; 
-        
+        this.x -= this.speed;
+ 
         this.screenY = this.y - camera.y;
-
+        const box = this.getHitbox();
+        const screenBottom = camera.y + camera.height;
+        if (box.y > screenBottom) {
+            this.offScreenTimer += dt;
+            if (this.offScreenTimer >= 3) {
+                this.die();
+            }
+        } else {
+            this.offScreenTimer = 0;
+        }
+ 
         if (moved) {
-            socket.emit('playerMovement', { x: this.x, y: this.y });         
+            socket.emit('playerMovement', { x: this.x, y: this.y });
         }
     }
 }
-
+ 
 class Platform {
     constructor(x, y, width, height, type) {
         this.x = x;
@@ -187,33 +212,45 @@ class Platform {
         this.type = type;
     }
 }
-
-function topPlayer(players) {
+ 
+function topPlayer(playerSet) {
     let topPlay = null;
-    for (let id in players) {
-        if (topPlay === null || players[id].y < topPlay.y) {
-            topPlay = players[id];
+    for (let id in playerSet) {
+        if (topPlay === null || playerSet[id].y < topPlay.y) {
+            topPlay = playerSet[id];
         }
     }
     return topPlay;
 }
-
-function cameraU() {
-    let limit = 0; 
-    const leadPlayer = topPlayer(players);
+ 
+function getAlivePlayers() {
+    const alive = {};
+    for (let id in players) {
+        if (players[id] && players[id].alive !== false) {
+            alive[id] = players[id];
+        }
+    }
+    return alive;
+}
+ 
+function cameraU(dt) {
+    let limit = camera.y;
+    const leadPlayer = topPlayer(alivePlayers);
+ 
     if (leadPlayer != null) {
-        if (leadPlayer.screenY < 0 + camera.paddingTop) {
+        const screenY = leadPlayer.y - camera.y;
+ 
+        if (screenY < camera.paddingTop) {
             limit = leadPlayer.y - camera.paddingTop;
         }
-        else if (leadPlayer.screenY > camera.height - camera.paddingBottom) {  
+        else if (screenY > camera.height - camera.paddingBottom) {
             limit = leadPlayer.y - camera.height + camera.paddingBottom;
         }
         else {
             limit = camera.y;
         }
-        if (camera.peak == 0) {
-            camera.peak = limit;
-        }
+ 
+        camera.peak = Math.min(camera.peak, limit);
         let bottom = camera.peak + camera.dip;
         if (limit > bottom) {
             limit = bottom;
@@ -221,10 +258,11 @@ function cameraU() {
         if (limit > 0) {
             limit = 0;
         }
-        camera.y += (limit - camera.y) * camera.scroll;
+        const smoothing = 1 - Math.pow(1 - camera.scroll, dt * 60);
+        camera.y += (limit - camera.y) * smoothing;
     }
 }
-
+ 
 const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, Space: false};
 const keys2 = { W: false, A: false, S: false, D: false};
 window.addEventListener('keydown', (e) => {
@@ -239,21 +277,24 @@ window.addEventListener('keyup', (e) => {
     const keyUpper = e.key.toUpperCase();
     if (keyUpper in keys2) keys2[keyUpper] = false;
 });
-
+ 
 socket.on('connect', () => {
     myId = socket.id;
-    socket.emit('requestPlayers'); 
+    socket.emit('requestPlayers');
 });
-
+ 
 socket.on('currentPlayers', (serverPlayers) => {
     players = serverPlayers;
+    for (let id in players) {
+        if (players[id].alive === undefined) players[id].alive = true;
+    }
     if (players[myId] && !localPlayer) {
         const sData = players[myId];
         localPlayer = new Player(sData.x, sData.y, sData.color);
     }
 });
 socket.on('newPlayer', (data) => {
-    players[data.id] = data.player; 
+    players[data.id] = { alive: true, ...data.player };
 });
 socket.on('playerMoved', (data) => {
     if (players[data.id]) {
@@ -262,35 +303,41 @@ socket.on('playerMoved', (data) => {
     }
 });
 socket.on('playerDisconnected', (id) => {
-    delete players[id]; 
+    delete players[id];
 });
-
+socket.on('playerDied', (id) => {
+    if (players[id]) {
+        players[id].alive = false;
+    }
+});
+ 
 function random(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
-
+ 
 function generate(target) {
     if (platforms.length === 0) return;
     let highest = platforms.reduce((min, p) => p.y < min.y ? p : min, platforms[0]);
     let current = highest.y;
     let xurrent = highest.x
-
+ 
     while (current > target) {
         const gap = random(60, 130);
         current -= gap;
-
+ 
         const width = random(60, 180);
         const xap = random(0, 550);
         const x = random(Math.max(xap, 0), Math.min(xap, canvas.width - width));
         const ty = random(0, 11);
+        let typ;
         if (ty >= 6 || xap*gap >= 50000 || gap >= 115 || xap >= 500){
-             typ = 'solid' 
+             typ = 'solid'
         } else if (ty >= 2) {
             typ = 'pass'
         } else {
             typ = 'boost'
         }
-        
+ 
         platforms.push({ x, y: current, width, height: 15, type: typ });
     }
 }
@@ -298,48 +345,75 @@ function clean() {
     let bottom = camera.peak + camera.dip;
     platforms = platforms.filter(p => p.y < bottom);
 }
-
-function update() {
-    if (localPlayer) {
-        localPlayer.update();
+ 
+function update(timestamp) {
+    let dt = 1 / 60;
+    if (lastFrameTime !== null) {
+        dt = (timestamp - lastFrameTime) / 1000;
+        dt = Math.min(dt, 0.1); 
     }
-    cameraU();
+    lastFrameTime = timestamp;
+ 
+    if (localPlayer) {
+        localPlayer.update(dt);
+        if (players[myId]) {
+            players[myId].x = localPlayer.x;
+            players[myId].y = localPlayer.y;
+            players[myId].color = localPlayer.color;
+            players[myId].alive = localPlayer.alive;
+        }
+    }
+ 
+    alivePlayers = getAlivePlayers();
+    cameraU(dt);
     generate(camera.y - 200);
     clean();
-
+ 
     if (ctx && canvas) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.save();
-        ctx.translate(0, -Math.floor(camera.y));
-
+        ctx.translate(0, -camera.y);
+ 
         for (let id in players) {
-            if (id === myId && localPlayer) {
-                ctx.fillStyle = localPlayer.color || 'rgb(0, 255, 0)';
-                ctx.fillRect(localPlayer.x, localPlayer.y, 20, 20);
-            }
-            else {
-                ctx.fillStyle = players[id].color || 'rgb(255, 255, 255)';
-                ctx.fillRect(players[id].x, players[id].y, 20, 20);
-            }
+            const p = players[id];
+            const isSelf = id === myId && localPlayer;
+            const px = isSelf ? localPlayer.x : p.x;
+            const py = isSelf ? localPlayer.y : p.y;
+            const isAlive = isSelf ? localPlayer.alive : p.alive !== false;
+            const baseColor = isSelf ? (localPlayer.color || 'rgb(0, 255, 0)') : (p.color || 'rgb(255, 255, 255)');
+ 
+            ctx.fillStyle = isAlive ? baseColor : 'rgba(120, 120, 120, 0.4)';
+            ctx.fillRect(px, py, 20, 20);
         }
-
+ 
         platforms.forEach(platform => {
             ctx.fillStyle = platform.type === 'solid' ? 'rgb(139, 69, 19)' : 'rgb(34, 139, 34)';
             ctx.fillStyle = platform.type === 'boost' ? 'rgb(0, 150, 255)' : ctx.fillStyle;
             ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
         });
         ctx.restore();
+ 
+        if (localPlayer && !localPlayer.alive) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 36px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('You Died', canvas.width / 2, canvas.height / 2);
+            ctx.restore();
+        }
     }
-
+ 
     requestAnimationFrame(update);
 }
-
+ 
 window.onload = () => {
     canvas = document.getElementById('gameCanvas');
     if (canvas) {
         ctx = canvas.getContext('2d');
         canvas.width = camera.width;
         canvas.height = camera.height;
-        update();
+        requestAnimationFrame(update); 
     }
 };
