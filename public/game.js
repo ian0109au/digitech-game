@@ -414,6 +414,6 @@ window.onload = () => {
         ctx = canvas.getContext('2d');
         canvas.width = camera.width;
         canvas.height = camera.height;
-        requestAnimationFrame(update); 
+        requestAnimationFrame(update); x
     }
 };
