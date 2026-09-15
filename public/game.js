@@ -16,16 +16,23 @@ const camera = {
     dip: 600
 };
 let grav = 0.1;
+
 let platforms = [
     { x: 0, y: 580, width: 800, height: 20, type: 'solid' }
 ];
+
 let players = {};
 let alivePlayers = {};
+
 let localPlayer = null;
 let myId = null;
 let lastFrameTime = null;
+
 let gameStarted = false;
 let loopStarted = false;
+let currentRoom = null;
+let roomState = 'waiting';
+let countdownEndsAt = null;
 
 class col {
     static checkAABB(a, b) {
@@ -114,6 +121,7 @@ class Player {
         this.jump = 0;
         this.offScreenTimer = 0;
         socket.emit('playerDied');
+        setMenuView('select');
     }
     update(dt) {
         if (!this.alive) return;
@@ -187,15 +195,17 @@ class Player {
         this.x -= this.speed;
 
         this.screenY = this.y - camera.y;
-        const box = this.getHitbox();
-        const screenBottom = camera.y + camera.height;
-        if (box.y > screenBottom) {
-            this.offScreenTimer += dt;
-            if (this.offScreenTimer >= 3) {
-                this.die();
+        if (roomState === 'active') {
+            const box = this.getHitbox();
+            const screenBottom = camera.y + camera.height;
+            if (box.y > screenBottom) {
+                this.offScreenTimer += dt;
+                if (this.offScreenTimer >= 3) {
+                    this.die();
+                }
+            } else {
+                this.offScreenTimer = 0;
             }
-        } else {
-            this.offScreenTimer = 0;
         }
 
         if (moved) {
@@ -241,8 +251,6 @@ function cameraU(dt) {
             limit = camera.y;
         }
 
-        // Track the highest point ever reached (most negative y), instead of
-        // freezing after the very first frame.
         camera.peak = Math.min(camera.peak, limit);
         let bottom = camera.peak + camera.dip;
         if (limit > bottom) {
@@ -251,6 +259,7 @@ function cameraU(dt) {
         if (limit > 0) {
             limit = 0;
         }
+
         const smoothing = 1 - Math.pow(1 - camera.scroll, dt * 60);
         camera.y += (limit - camera.y) * smoothing;
     }
@@ -273,7 +282,6 @@ window.addEventListener('keyup', (e) => {
 
 socket.on('connect', () => {
     myId = socket.id;
-    socket.emit('requestPlayers');
 });
 
 socket.on('currentPlayers', (serverPlayers) => {
@@ -281,9 +289,20 @@ socket.on('currentPlayers', (serverPlayers) => {
     for (let id in players) {
         if (players[id].alive === undefined) players[id].alive = true;
     }
-    if (players[myId] && !localPlayer) {
-        const sData = players[myId];
-        localPlayer = new Player(sData.x, sData.y, sData.color);
+
+    const sData = players[myId];
+    if (sData) {
+        if (!localPlayer) {
+            localPlayer = new Player(sData.x, sData.y, sData.color);
+        } else {
+            localPlayer.x = sData.x;
+            localPlayer.y = sData.y;
+            localPlayer.color = sData.color;
+            localPlayer.alive = sData.alive;
+            localPlayer.speed = 0;
+            localPlayer.jump = 0;
+            localPlayer.offScreenTimer = 0;
+        }
     }
     tryStartLoop();
 });
@@ -307,6 +326,38 @@ socket.on('playerDied', (id) => {
 socket.on('platforms', (serverPlatforms) => {
     platforms = serverPlatforms;
 });
+socket.on('roomState', (data) => {
+    roomState = data.state;
+    countdownEndsAt = data.countdownEndsAt;
+    setMenuView(roomState === 'waiting' ? 'waiting' : 'none');
+});
+socket.on('roundEnded', () => {
+});
+
+function chooseServer(roomName) {
+    gameStarted = true;
+    if (currentRoom) {
+        socket.emit('switchRoom', roomName);
+    } else {
+        socket.emit('joinRoom', roomName);
+    }
+    currentRoom = roomName;
+}
+
+function setMenuView(view) {
+    const menu = document.getElementById('menu');
+    const select = document.getElementById('serverSelect');
+    const waiting = document.getElementById('waitingRoom');
+    if (!menu || !select || !waiting) return;
+
+    if (view === 'none') {
+        menu.classList.add('hidden');
+        return;
+    }
+    menu.classList.remove('hidden');
+    select.classList.toggle('hidden', view !== 'select');
+    waiting.classList.toggle('hidden', view !== 'waiting');
+}
 
 function update(timestamp) {
     let dt = 1 / 60;
@@ -328,6 +379,12 @@ function update(timestamp) {
 
     alivePlayers = getAlivePlayers();
     cameraU(dt);
+
+    if (roomState === 'waiting' && countdownEndsAt) {
+        const secondsLeft = Math.max(0, Math.ceil((countdownEndsAt - Date.now()) / 1000));
+        const countdownEl = document.getElementById('countdownText');
+        if (countdownEl) countdownEl.textContent = `Game starts in: ${secondsLeft}s`;
+    }
 
     if (ctx && canvas) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -377,8 +434,6 @@ function tryStartLoop() {
 
 window.onload = () => {
     canvas = document.getElementById('gameCanvas');
-    const menu = document.getElementById('menu');
-    const playBtn = document.getElementById('playBtn');
 
     if (canvas) {
         ctx = canvas.getContext('2d');
@@ -386,11 +441,9 @@ window.onload = () => {
         canvas.height = camera.height;
     }
 
-    if (playBtn) {
-        playBtn.addEventListener('click', () => {
-            gameStarted = true;
-            if (menu) menu.classList.add('hidden');
-            tryStartLoop();
-        });
-    }
+    document.querySelectorAll('.serverBtn').forEach((btn) => {
+        btn.addEventListener('click', () => chooseServer(btn.dataset.room));
+    });
+
+    setMenuView('select');
 };

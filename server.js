@@ -8,15 +8,9 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-let players = {};
-
-// --- Shared, server-authoritative platforms -------------------------------
-let platforms = [
-    { x: 0, y: 580, width: 800, height: 20, type: 'solid' }
-];
-let peakY = 0;  
-const DIP = 600; 
-const LOOKAHEAD = 800; 
+const ROUND_START_DELAY = 30000;
+const DIP = 600;
+const LOOKAHEAD = 800;
 
 class ServerPlayer {
     constructor(x, y, color) {
@@ -27,11 +21,28 @@ class ServerPlayer {
     }
 }
 
+function createRoom() {
+    return {
+        state: 'waiting',
+        players: {},
+        platforms: [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }],
+        peakY: 0,
+        countdownEndsAt: null,
+        countdownTimer: null,
+    };
+}
+
+const rooms = {
+    'server-1': createRoom(),
+    'server-2': createRoom(),
+    'server-3': createRoom(),
+};
+
 function random(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function generatePlatforms(target) {
+function generatePlatforms(platforms, target) {
     if (platforms.length === 0) return;
     let highest = platforms.reduce((min, p) => p.y < min.y ? p : min, platforms[0]);
     let current = highest.y;
@@ -57,12 +68,12 @@ function generatePlatforms(target) {
     }
 }
 
-function cleanPlatforms() {
-    const bottom = peakY + DIP;
-    platforms = platforms.filter(p => p.y < bottom);
+function cleanPlatforms(room) {
+    const bottom = room.peakY + DIP;
+    room.platforms = room.platforms.filter(p => p.y < bottom);
 }
 
-function getLeadY() {
+function getLeadY(players) {
     let leadY = null;
     for (let id in players) {
         if (players[id].alive !== false && (leadY === null || players[id].y < leadY)) {
@@ -71,51 +82,160 @@ function getLeadY() {
     }
     return leadY;
 }
+
+function checkWinner(room) {
+    return null;
+}
+
+function startCountdown(roomName) {
+    const room = rooms[roomName];
+    if (!room) return;
+
+    clearTimeout(room.countdownTimer);
+    room.state = 'waiting';
+    room.countdownEndsAt = Date.now() + ROUND_START_DELAY;
+
+    io.to(roomName).emit('roomState', { state: room.state, countdownEndsAt: room.countdownEndsAt });
+
+    room.countdownTimer = setTimeout(() => {
+        room.state = 'active';
+        io.to(roomName).emit('roomState', { state: room.state, countdownEndsAt: null });
+    }, ROUND_START_DELAY);
+}
+
+function resetRoom(roomName) {
+    const room = rooms[roomName];
+    if (!room) return;
+
+    room.platforms = [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }];
+    room.peakY = 0;
+
+    for (const id in room.players) {
+        room.players[id].x = 100;
+        room.players[id].y = 500;
+        room.players[id].alive = true;
+    }
+
+    io.to(roomName).emit('currentPlayers', room.players);
+    io.to(roomName).emit('platforms', room.platforms);
+    startCountdown(roomName);
+}
+
+function checkRoundEnd(roomName) {
+    const room = rooms[roomName];
+    if (!room || room.state !== 'active') return;
+
+    const ids = Object.keys(room.players);
+    if (ids.length === 0) return;
+
+    const allDead = ids.every(id => room.players[id].alive === false);
+    const winnerId = checkWinner(room);
+
+    if (allDead || winnerId) {
+        io.to(roomName).emit('roundEnded', { winnerId: winnerId || null });
+        resetRoom(roomName);
+    }
+}
+
+function checkEmptyRoom(roomName) {
+    const room = rooms[roomName];
+    if (!room) return;
+    if (Object.keys(room.players).length === 0) {
+        clearTimeout(room.countdownTimer);
+        room.state = 'waiting';
+        room.countdownEndsAt = null;
+        room.platforms = [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }];
+        room.peakY = 0;
+    }
+}
+
+function joinRoom(socket, roomName) {
+    const room = rooms[roomName];
+    if (!room) return;
+
+    const color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+    room.players[socket.id] = new ServerPlayer(100, 500, color);
+
+    socket.join(roomName);
+    socket.data.room = roomName;
+
+    if (Object.keys(room.players).length === 1 && !room.countdownEndsAt) {
+        startCountdown(roomName);
+    }
+
+    socket.emit('currentPlayers', room.players);
+    socket.emit('platforms', room.platforms);
+    socket.emit('roomState', { state: room.state, countdownEndsAt: room.countdownEndsAt });
+    socket.to(roomName).emit('newPlayer', { id: socket.id, player: room.players[socket.id] });
+}
+
+function leaveRoom(socket) {
+    const roomName = socket.data.room;
+    if (!roomName || !rooms[roomName]) return;
+
+    delete rooms[roomName].players[socket.id];
+    socket.leave(roomName);
+    io.to(roomName).emit('playerDisconnected', socket.id);
+    checkEmptyRoom(roomName);
+    socket.data.room = null;
+}
 setInterval(() => {
-    const leadY = getLeadY();
-    if (leadY === null) return;
+    for (const roomName in rooms) {
+        const room = rooms[roomName];
+        if (room.state !== 'active') continue;
 
-    peakY = Math.min(peakY, leadY);
+        const leadY = getLeadY(room.players);
+        if (leadY === null) continue;
 
-    const beforeCount = platforms.length;
-    generatePlatforms(leadY - LOOKAHEAD);
-    const afterGenerate = platforms.length;
-    cleanPlatforms();
-    const afterClean = platforms.length;
+        room.peakY = Math.min(room.peakY, leadY);
 
-    if (afterGenerate !== beforeCount || afterClean !== afterGenerate) {
-        io.emit('platforms', platforms);
+        const before = room.platforms.length;
+        generatePlatforms(room.platforms, leadY - LOOKAHEAD);
+        const afterGenerate = room.platforms.length;
+        cleanPlatforms(room);
+        const afterClean = room.platforms.length;
+
+        if (afterGenerate !== before || afterClean !== afterGenerate) {
+            io.to(roomName).emit('platforms', room.platforms);
+        }
+
+        checkRoundEnd(roomName);
     }
 }, 300);
 
 io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
-    const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-    players[socket.id] = new ServerPlayer(100, 500, randomColor);
-    socket.emit('currentPlayers', players);
-    socket.emit('platforms', platforms); // sync the newcomer to the current shared layout
-    socket.broadcast.emit('newPlayer', { id: socket.id, player: players[socket.id] });
+
+    socket.on('joinRoom', (roomName) => joinRoom(socket, roomName));
+
+    socket.on('switchRoom', (newRoomName) => {
+        leaveRoom(socket);
+        joinRoom(socket, newRoomName);
+    });
 
     socket.on('playerMovement', (movementData) => {
-        if (players[socket.id]) {
-            players[socket.id].x = movementData.x;
-            players[socket.id].y = movementData.y;
-            io.emit('playerMoved', { id: socket.id, x: players[socket.id].x, y: players[socket.id].y });
+        const roomName = socket.data.room;
+        const room = rooms[roomName];
+        if (room && room.players[socket.id]) {
+            room.players[socket.id].x = movementData.x;
+            room.players[socket.id].y = movementData.y;
+            io.to(roomName).emit('playerMoved', { id: socket.id, x: movementData.x, y: movementData.y });
         }
     });
 
     socket.on('playerDied', () => {
-        if (players[socket.id] && players[socket.id].alive) {
-            players[socket.id].alive = false;
-            // Sender already marked itself dead locally, so only the others need telling.
-            socket.broadcast.emit('playerDied', socket.id);
+        const roomName = socket.data.room;
+        const room = rooms[roomName];
+        if (room && room.players[socket.id] && room.players[socket.id].alive) {
+            room.players[socket.id].alive = false;
+            socket.to(roomName).emit('playerDied', socket.id);
+            checkRoundEnd(roomName);
         }
     });
 
     socket.on('disconnect', () => {
         console.log(`Player disconnected: ${socket.id}`);
-        delete players[socket.id];
-        io.emit('playerDisconnected', socket.id);
+        leaveRoom(socket);
     });
 });
 
