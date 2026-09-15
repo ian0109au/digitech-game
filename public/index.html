@@ -38,25 +38,36 @@
         justify-content: center;
         align-items: center;
     }
-    #menu.hidden {
-        display: none;
+    .hidden {
+        display: none !important;
     }
     #menu h1 {
-        margin: 0 0 24px;
+        margin: 0 0 8px;
         font-size: 32px;
         letter-spacing: 1px;
     }
-    #playBtn {
-        padding: 12px 32px;
-        font-size: 18px;
+    #menu .subtitle {
+        margin: 0 0 24px;
+        opacity: 0.75;
+    }
+    .server-list {
+        display: flex;
+        gap: 12px;
+    }
+    .serverBtn {
+        padding: 12px 24px;
+        font-size: 16px;
         background: #0096ff;
         color: #fff;
         border: none;
         border-radius: 6px;
         cursor: pointer;
     }
-    #playBtn:hover {
+    .serverBtn:hover {
         background: #007fd6;
+    }
+    #countdownText {
+        font-size: 20px;
     }
 </style>
 </head>
@@ -64,8 +75,19 @@
 <div class="game-wrap">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     <div id="menu">
-        <h1>JS IO Game</h1>
-        <button id="playBtn">Play</button>
+        <div id="serverSelect">
+            <h1>JS IO Game</h1>
+            <p class="subtitle">Choose a server</p>
+            <div class="server-list">
+                <button class="serverBtn" data-room="server-1">Server 1</button>
+                <button class="serverBtn" data-room="server-2">Server 2</button>
+                <button class="serverBtn" data-room="server-3">Server 3</button>
+            </div>
+        </div>
+        <div id="waitingRoom" class="hidden">
+            <h1>Get Ready</h1>
+            <p id="countdownText">Game starts in: 30s</p>
+        </div>
     </div>
 </div>
 <script src="/socket.io/socket.io.js"></script>
