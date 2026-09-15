@@ -157,6 +157,8 @@ function updateBot(bot, room, dt) {
     bot.x = Math.max(0, Math.min(780, bot.x - bot.speed));
 }
 function botDeath(room, roomName, botId, bot, dt) {
+    if (bot.alive == false) return;
+
     const screenBottom = room.peakY + cameraY;
     if (bot.y > screenBottom) {
         bot.offScreenTimer += dt;
@@ -212,14 +214,14 @@ function generatePlatforms(room, target) {
             room.nextLevel -= linterval;
             continue;
         }
-        const gap = random(60, 130);
+        const gap = random(60, 105);
         current -= gap;
         const width = random(60, 180);
         const xap = random(0, 550);
         const x = random(Math.max(xap, 0), Math.min(xap, 800 - width));
         const ty = random(0, 11);
         let typ;
-        if (ty >= 6 || xap * gap >= 50000 || gap >= 115 || xap >= 500) {
+        if (ty >= 7) {
             typ = 'solid';
         } else if (ty >= 2) {
             typ = 'pass';
@@ -380,7 +382,7 @@ setInterval(() => {
         }
         for (const id in room.players) {
             const p = room.players[id];
-            if (p.isBot == false) continue;
+            if (p.isBot != true) continue;
             updateBot(p, room, ticks);
             botDeath(room, roomName, id, p, ticks);
             io.to(roomName).emit('move', { id, x: p.x, y: p.y });
