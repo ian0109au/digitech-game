@@ -16,7 +16,7 @@ let start = false;
 let lstart = false;
 let room = null;
 let rstate = 'waiting';
-let countEnd = null;
+let countdownEndsAt = null;
 let spectating = false;
 class Player {
     constructor(x, y, color) {
@@ -137,7 +137,7 @@ function topPlayer(set) {
 function alive() {
     const alive = {};
     for (let id in players) {
-        if (players[id] == true && players[id].alive != false) {
+        if (players[id] != null && players[id].alive != false) {
             alive[id] = players[id];
         }
     }
@@ -194,8 +194,8 @@ socket.on('currentPlayers', (serverPlayers) => {
         if (players[id].alive == undefined) players[id].alive = true;
     }
     const sData = players[myId];
-    if (sData == true && spectating == false) {
-        if (localPlayer == false) {
+    if (sData != null && spectating == false) {
+        if (localPlayer == null) {
             localPlayer = new Player(sData.x, sData.y, sData.color);
         } else {
             localPlayer.x = sData.x;
@@ -213,7 +213,7 @@ socket.on('new', (data) => {
     players[data.id] = { alive: true, ...data.player };
 });
 socket.on('move', (data) => {
-    if (players[data.id] == true) {
+    if (players[data.id] != null) {
         players[data.id].x = data.x;
         players[data.id].y = data.y;
     }
@@ -222,16 +222,16 @@ socket.on('disconnect', (id) => {
     delete players[id];
 });
 socket.on('die', (id) => {
-    if (players[id] == true) {
+    if (players[id] != null) {
         players[id].alive = false;
     }
 });
 socket.on('platforms', (serverPlatforms) => {
     platforms = serverPlatforms;
 });
-socket.on('rstate', (data) => {
+socket.on('roomState', (data) => {
     rstate = data.state;
-    countEnd = data.countEnd;
+    countdownEndsAt = data.countdownEndsAt;
     view(rstate == 'waiting' ? 'waiting' : 'none');
 });
 socket.on('spectating', (val) => {
@@ -263,7 +263,7 @@ function join() {
 }
 function roomList(list) {
     const container = document.getElementById('roomListEl');
-    if (container == false) return;
+    if (container == null) return;
     container.innerHTML = '';
     list.forEach((r) => {
         const row = document.createElement('div');
@@ -271,8 +271,8 @@ function roomList(list) {
         const label = document.createElement('span');
         let statusText;
         if (r.state == 'waiting') {
-            const left = r.countEnd
-                ? Math.max(0, Math.ceil((r.countEnd - Date.now()) / 1000))
+            const left = r.countdownEndsAt
+                ? Math.max(0, Math.ceil((r.countdownEndsAt - Date.now()) / 1000))
                 : null;
             statusText = left != null ? `starts in ${left}s` : 'waiting for players';
         } else {
@@ -297,7 +297,7 @@ function view(view) {
     const menu = document.getElementById('menu');
     const select = document.getElementById('serverSelect');
     const waiting = document.getElementById('waitingRoom');
-    if (menu == false|| select == false || waiting == false) return;
+    if (menu == null || select == null || waiting == null) return;
     if (view == 'none') {
         menu.classList.add('hidden');
         return;
@@ -313,9 +313,9 @@ function update(timestamp) {
         dt = Math.min(dt, 0.1);
     }
     lastFrameTime = timestamp;
-    if (localPlayer == true) {
+    if (localPlayer != null) {
         localPlayer.update(dt);
-        if (players[myId] == true) {
+        if (players[myId] != null) {
             players[myId].x = localPlayer.x;
             players[myId].y = localPlayer.y;
             players[myId].color = localPlayer.color;
@@ -324,12 +324,12 @@ function update(timestamp) {
     }
     alivePlayers = alive();
     cameraU(dt);
-    if (rstate == 'waiting' && countEnd == true) {
-        const left = Math.max(0, Math.ceil((countEnd - Date.now()) / 1000));
+    if (rstate == 'waiting' && countdownEndsAt != null) {
+        const left = Math.max(0, Math.ceil((countdownEndsAt - Date.now()) / 1000));
         const count = document.getElementById('countdownText');
-        if (count == true) count.textContent = `Game starts in: ${left}s`;
+        if (count != null) count.textContent = `Game starts in: ${left}s`;
     }
-    if (ctx == true && canvas == true) {
+    if (ctx != null && canvas != null) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.save();
         ctx.translate(0, -camera.y);
@@ -345,7 +345,7 @@ function update(timestamp) {
         }
         platforms.forEach(platform => {ctx.fillStyle = platform.type == 'solid' ? 'rgb(139, 69, 19)' : 'rgb(34, 139, 34)';ctx.fillStyle = platform.type == 'boost' ? 'rgb(0, 150, 255)' : ctx.fillStyle;ctx.fillRect(platform.x, platform.y, platform.width, platform.height);});
         ctx.restore();
-        if (localPlayer == true && localPlayer.alive == false) {
+        if (localPlayer != null && localPlayer.alive == false) {
             ctx.save();
             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -367,19 +367,19 @@ function update(timestamp) {
     requestAnimationFrame(update);
 }
 function loopStart() {
-    if (start == true && (localPlayer == true || spectating == true) && lstart == false) {
+    if (start == true && (localPlayer != null || spectating == true) && lstart == false) {
         lstart = true;
         requestAnimationFrame(update);
     }
 }
 window.onload = () => {
     canvas = document.getElementById('gameCanvas');
-    if (canvas == true) {
+    if (canvas != null) {
         ctx = canvas.getContext('2d');
         canvas.width = camera.width;
         canvas.height = camera.height;
     }
     const joinButton = document.getElementById('joinButton');
-    if (joinButton == true) joinButton.addEventListener('click', join);
+    if (joinButton != null) joinButton.addEventListener('click', join);
     view('select');
 };

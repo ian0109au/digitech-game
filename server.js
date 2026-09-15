@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const col = require('./public/shared/physics.js');
 const app = express();
-const server = http.screate(app);
+const server = http.createServer(app);
 const io = new Server(server);
 app.use(express.static('public'));
 const startDelay = 30000;
@@ -116,7 +116,7 @@ function updateBot(bot, room, dt) {
     if (bot.alive == false) return;
 
     bot.retargetTimer -= dt;
-    if (bot.target == false || bot.retargetTimer <= 0 || room.platforms.includes(bot.target) == false) {
+    if (bot.target == null || bot.retargetTimer <= 0 || room.platforms.includes(bot.target) == false) {
         bot.target = pickBotTarget(bot, room.platforms);
         bot.retargetTimer = 1;
     }
@@ -133,7 +133,7 @@ function updateBot(bot, room, dt) {
     bot.grounded = grounded;
     if (grounded == true) bot.jump = 0;
 
-    if (bot.target == true) {
+    if (bot.target != null) {
         const targetCenter = bot.target.x + bot.target.width / 2;
         const botCenter = bot.x + 10;
 
@@ -170,13 +170,13 @@ function botDeath(room, roomName, botId, bot, dt) {
 }
 function delBot(room, roomName) {
     const botId = Object.keys(room.players).find(id => room.players[id].isBot);
-    if (botId == false) return;
+    if (botId == null) return;
     delete room.players[botId];
     io.to(roomName).emit('disconnect', botId);
 }
 function fillBots(roomName) {
     const room = rooms[roomName];
-    if (room == false || room.state !== 'waiting') return;
+    if (room == null || room.state !== 'waiting') return;
     const ids = Object.keys(room.players);
     const realCount = ids.filter(id => !room.players[id].isBot).length;
     if (realCount === 0) return; 
@@ -247,7 +247,7 @@ function winner(room) {
 }
 function startCountdown(roomName) {
     const room = rooms[roomName];
-    if (room == false) return;
+    if (room == null) return;
     clearTimeout(room.countdownTimer);
     room.state = 'waiting';
     room.countdownEndsAt = Date.now() + startDelay;
@@ -260,7 +260,7 @@ function startCountdown(roomName) {
 }
 function resetRoom(roomName) {
     const room = rooms[roomName];
-    if (room == false) return;
+    if (room == null) return;
     room.platforms = [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }];
     room.peakY = 0;
     room.nextLevel = -linterval;
@@ -284,7 +284,7 @@ function resetRoom(roomName) {
 }
 function roundEnd(roomName) {
     const room = rooms[roomName];
-    if (room == false || room.state !== 'active') return;
+    if (room == null || room.state !== 'active') return;
     const ids = Object.keys(room.players);
     if (ids.length === 0) return;
     const allDead = ids.every(id => room.players[id].alive === false);
@@ -296,7 +296,7 @@ function roundEnd(roomName) {
 }
 function emptyRoom(roomName) {
     const room = rooms[roomName];
-    if (room == false) return;
+    if (room == null) return;
     const realCount = Object.values(room.players).filter(p => !p.isBot).length;
     if (realCount === 0) {
         clearTimeout(room.countdownTimer);
@@ -310,7 +310,7 @@ function emptyRoom(roomName) {
 }
 function leaveRoom(socket) {
     const roomName = socket.data.room;
-    if (roomName == false || rooms[roomName] == false) return;
+    if (roomName == null || rooms[roomName] == null) return;
     const room = rooms[roomName];
 
     if (socket.data.spectating == true) {
@@ -326,7 +326,7 @@ function leaveRoom(socket) {
 }
 function joinRoom(socket, roomName) {
     const room = rooms[roomName];
-    if (room == false || room.state !== 'waiting') return;
+    if (room == null || room.state !== 'waiting') return;
     leaveRoom(socket);
     socket.leave(LOBBY);
     delBot(room, roomName);
@@ -335,7 +335,7 @@ function joinRoom(socket, roomName) {
     socket.join(roomName);
     socket.data.room = roomName;
     socket.data.spectating = false;
-    if (Object.keys(room.players).length === 1 && room.countdownEndsAt == false) {
+    if (Object.keys(room.players).length === 1 && room.countdownEndsAt == null) {
         startCountdown(roomName);
     }
     fillBots(roomName);
@@ -347,7 +347,7 @@ function joinRoom(socket, roomName) {
 }
 function spectate(socket, roomName) {
     const room = rooms[roomName];
-    if (room == false) return;
+    if (room == null) return;
     leaveRoom(socket);
     socket.leave(LOBBY);
     room.spectators.add(socket.id);
@@ -399,7 +399,7 @@ io.on('connection', (socket) => {
     socket.on('move', (movementData) => {
         const roomName = socket.data.room;
         const room = rooms[roomName];
-        if (room == true && room.players[socket.id] == true && socket.data.spectating == false) {
+        if (room != null && room.players[socket.id] != null && socket.data.spectating == false) {
             room.players[socket.id].x = movementData.x;
             room.players[socket.id].y = movementData.y;
             io.to(roomName).emit('move', { id: socket.id, x: movementData.x, y: movementData.y });
@@ -408,7 +408,7 @@ io.on('connection', (socket) => {
     socket.on('die', () => {
         const roomName = socket.data.room;
         const room = rooms[roomName];
-        if (room == true && room.players[socket.id] == true && room.players[socket.id].alive == true) {
+        if (room != null && room.players[socket.id] != null && room.players[socket.id].alive == true) {
             room.players[socket.id].alive = false;
             socket.to(roomName).emit('die', socket.id);
             socket.join(LOBBY); 
