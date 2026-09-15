@@ -47,12 +47,8 @@
         letter-spacing: 1px;
     }
     #menu .subtitle {
-        margin: 0 0 24px;
+        margin: 12px 0 10px;
         opacity: 0.75;
-    }
-    .server-list {
-        display: flex;
-        gap: 12px;
     }
     .serverBtn {
         padding: 12px 24px;
@@ -66,6 +62,29 @@
     .serverBtn:hover {
         background: #007fd6;
     }
+    .serverBtn.small {
+        padding: 6px 14px;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+    .room-list {
+        width: 90%;
+        max-height: 220px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .room-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 13px;
+    }
     #countdownText {
         font-size: 20px;
     }
@@ -77,12 +96,9 @@
     <div id="menu">
         <div id="serverSelect">
             <h1>JS IO Game</h1>
-            <p class="subtitle">Choose a server</p>
-            <div class="server-list">
-                <button class="serverBtn" data-room="server-1">Server 1</button>
-                <button class="serverBtn" data-room="server-2">Server 2</button>
-                <button class="serverBtn" data-room="server-3">Server 3</button>
-            </div>
+            <button id="quickJoinBtn" class="serverBtn">Quick Join</button>
+            <p class="subtitle">or pick a server</p>
+            <div id="roomListEl" class="room-list"></div>
         </div>
         <div id="waitingRoom" class="hidden">
             <h1>Get Ready</h1>
@@ -91,6 +107,7 @@
     </div>
 </div>
 <script src="/socket.io/socket.io.js"></script>
+<script src="shared/physics.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

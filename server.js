@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const col = require('./public/shared/physics.js');
 
 const app = express();
 const server = http.createServer(app);
@@ -11,6 +12,13 @@ app.use(express.static('public'));
 const ROUND_START_DELAY = 30000;
 const DIP = 600;
 const LOOKAHEAD = 800;
+const CAMERA_HEIGHT = 600;
+const BOT_FILL_COUNT = 3;
+const LEVEL_INTERVAL = 2000;
+const TICK_MS = 100;
+const TICK_SECONDS = TICK_MS / 1000;
+
+const LOBBY = 'lobby';
 
 class ServerPlayer {
     constructor(x, y, color) {
@@ -20,34 +28,213 @@ class ServerPlayer {
         this.alive = true;
     }
 }
+const LEVEL_TEMPLATES = [
+    [
+        { dx: 50,  dy: 0,    width: 100, height: 15, type: 'solid' },
+        { dx: 250, dy: -80,  width: 100, height: 15, type: 'solid' },
+        { dx: 100, dy: -160, width: 80,  height: 15, type: 'pass'  },
+        { dx: 400, dy: -220, width: 120, height: 15, type: 'boost' },
+        { dx: 200, dy: -320, width: 100, height: 15, type: 'solid' },
+    ],
+];
+
+let roomCounter = 0;
+const rooms = {};
 
 function createRoom() {
-    return {
-        state: 'waiting',
+    roomCounter++;
+    const name = `server-${roomCounter}`;
+    rooms[name] = {
+        name,
+        state: 'waiting', 
         players: {},
+        spectators: new Set(),
         platforms: [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }],
         peakY: 0,
+        nextLevelAt: -LEVEL_INTERVAL,
         countdownEndsAt: null,
         countdownTimer: null,
     };
+    return name;
+}
+function findJoinableRoom() {
+    for (const name in rooms) {
+        if (rooms[name].state === 'waiting') return name;
+    }
+    return createRoom();
 }
 
-const rooms = {
-    'server-1': createRoom(),
-    'server-2': createRoom(),
-    'server-3': createRoom(),
-};
+function roomSummary(room) {
+    const ids = Object.keys(room.players);
+    return {
+        name: room.name,
+        state: room.state,
+        playerCount: ids.filter(id => !room.players[id].isBot).length,
+        botCount: ids.filter(id => room.players[id].isBot).length,
+        spectatorCount: room.spectators.size,
+        countdownEndsAt: room.countdownEndsAt,
+    };
+}
+
+function broadcastRoomList() {
+    io.to(LOBBY).emit('roomList', Object.values(rooms).map(roomSummary));
+}
 
 function random(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+function createBot() {
+    return {
+        x: 100, y: 500,
+        speed: 0, jump: 0, jumpPower: 5,
+        color: '#888888',
+        alive: true,
+        isBot: true,
+        grounded: false,
+        hitbox: { offsetX: 0, offsetY: 0, width: 20, height: 20 },
+        offScreenTimer: 0,
+        target: null,
+        retargetTimer: 0,
+        getHitbox() {
+            return {
+                x: this.x + this.hitbox.offsetX,
+                y: this.y + this.hitbox.offsetY,
+                width: this.hitbox.width,
+                height: this.hitbox.height,
+            };
+        },
+    };
+}
 
-function generatePlatforms(platforms, target) {
+function pickBotTarget(bot, platforms) {
+    let best = null;
+    let bestScore = -Infinity;
+    for (const p of platforms) {
+        if (p.y >= bot.y - 10) continue;
+        const vertical = bot.y - p.y;
+        if (vertical > 260) continue;
+        const horizontal = Math.abs((p.x + p.width / 2) - bot.x);
+        if (horizontal > 400) continue;
+        const score = -vertical - horizontal * 0.3; 
+        if (score > bestScore) {
+            bestScore = score;
+            best = p;
+        }
+    }
+    return best;
+}
+
+function updateBot(bot, room, dt) {
+    if (!bot.alive) return;
+
+    bot.retargetTimer -= dt;
+    if (!bot.target || bot.retargetTimer <= 0 || !room.platforms.includes(bot.target)) {
+        bot.target = pickBotTarget(bot, room.platforms);
+        bot.retargetTimer = 1;
+    }
+
+    let grounded = false;
+    for (const platform of room.platforms) {
+        const landed = platform.type === 'pass'
+            ? col.resolvePass(bot, platform)
+            : col.resolveSolid(bot, platform);
+        if (landed) {
+            grounded = true;
+            break;
+        }
+    }
+    bot.grounded = grounded;
+    if (grounded) bot.jump = 0;
+
+    if (bot.target) {
+        const targetCenter = bot.target.x + bot.target.width / 2;
+        const botCenter = bot.x + 10;
+
+        if (targetCenter > botCenter + 5) {
+            bot.speed = Math.max(bot.speed - 1, -5);
+        } else if (targetCenter < botCenter - 5) {
+            bot.speed = Math.min(bot.speed + 1, 5);  
+        } else {
+            bot.speed *= 0.5;
+        }
+
+        const aligned = Math.abs(targetCenter - botCenter) < bot.target.width / 2 + 15;
+        if (bot.grounded && aligned) {
+            bot.jump = -bot.jumpPower;
+            if (bot.jumpPower === 8) bot.jumpPower = 5;
+        }
+    }
+
+    bot.jump += 0.1;
+    if (bot.speed > 0) bot.speed = Math.max(bot.speed - 0.1, 0);
+    else if (bot.speed < 0) bot.speed = Math.min(bot.speed + 0.1, 0);
+
+    bot.y += bot.jump;
+    bot.x = Math.max(0, Math.min(780, bot.x - bot.speed));
+}
+
+function checkBotDeath(room, roomName, botId, bot, dt) {
+    const screenBottom = room.peakY + CAMERA_HEIGHT;
+    if (bot.y > screenBottom) {
+        bot.offScreenTimer += dt;
+        if (bot.offScreenTimer >= 3) {
+            bot.alive = false;
+            io.to(roomName).emit('playerDied', botId);
+        }
+    } else {
+        bot.offScreenTimer = 0;
+    }
+}
+
+function evictBot(room, roomName) {
+    const botId = Object.keys(room.players).find(id => room.players[id].isBot);
+    if (!botId) return;
+    delete room.players[botId];
+    io.to(roomName).emit('playerDisconnected', botId);
+}
+function fillBots(roomName) {
+    const room = rooms[roomName];
+    if (!room || room.state !== 'waiting') return;
+
+    const ids = Object.keys(room.players);
+    const realCount = ids.filter(id => !room.players[id].isBot).length;
+    if (realCount === 0) return; 
+
+    let botCount = ids.filter(id => room.players[id].isBot).length;
+    while (realCount + botCount < BOT_FILL_COUNT) {
+        const botId = `bot-${Math.random().toString(36).slice(2, 9)}`;
+        room.players[botId] = createBot();
+        io.to(roomName).emit('newPlayer', { id: botId, player: room.players[botId] });
+        botCount++;
+    }
+}
+function placeLevel(platforms, anchorY) {
+    const template = LEVEL_TEMPLATES[random(0, LEVEL_TEMPLATES.length - 1)];
+    for (const p of template) {
+        platforms.push({
+            x: Math.max(0, Math.min(700, p.dx)),
+            y: anchorY + p.dy,
+            width: p.width,
+            height: p.height,
+            type: p.type,
+        });
+    }
+    return anchorY + Math.min(...template.map(p => p.dy));
+}
+
+function generatePlatforms(room, target) {
+    const platforms = room.platforms;
     if (platforms.length === 0) return;
     let highest = platforms.reduce((min, p) => p.y < min.y ? p : min, platforms[0]);
     let current = highest.y;
 
     while (current > target) {
+        if (current <= room.nextLevelAt) {
+            current = placeLevel(platforms, current);
+            room.nextLevelAt -= LEVEL_INTERVAL;
+            continue;
+        }
+
         const gap = random(60, 130);
         current -= gap;
 
@@ -82,7 +269,6 @@ function getLeadY(players) {
     }
     return leadY;
 }
-
 function checkWinner(room) {
     return null;
 }
@@ -94,7 +280,6 @@ function startCountdown(roomName) {
     clearTimeout(room.countdownTimer);
     room.state = 'waiting';
     room.countdownEndsAt = Date.now() + ROUND_START_DELAY;
-
     io.to(roomName).emit('roomState', { state: room.state, countdownEndsAt: room.countdownEndsAt });
 
     room.countdownTimer = setTimeout(() => {
@@ -102,18 +287,27 @@ function startCountdown(roomName) {
         io.to(roomName).emit('roomState', { state: room.state, countdownEndsAt: null });
     }, ROUND_START_DELAY);
 }
-
 function resetRoom(roomName) {
     const room = rooms[roomName];
     if (!room) return;
 
     room.platforms = [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }];
     room.peakY = 0;
+    room.nextLevelAt = -LEVEL_INTERVAL;
 
     for (const id in room.players) {
-        room.players[id].x = 100;
-        room.players[id].y = 500;
-        room.players[id].alive = true;
+        const p = room.players[id];
+        p.x = 100;
+        p.y = 500;
+        p.alive = true;
+        if (p.isBot) {
+            p.speed = 0;
+            p.jump = 0;
+            p.jumpPower = 5;
+            p.offScreenTimer = 0;
+            p.target = null;
+            p.retargetTimer = 0;
+        }
     }
 
     io.to(roomName).emit('currentPlayers', room.players);
@@ -140,45 +334,87 @@ function checkRoundEnd(roomName) {
 function checkEmptyRoom(roomName) {
     const room = rooms[roomName];
     if (!room) return;
-    if (Object.keys(room.players).length === 0) {
+    const realCount = Object.values(room.players).filter(p => !p.isBot).length;
+    if (realCount === 0) {
         clearTimeout(room.countdownTimer);
+        room.players = {};
         room.state = 'waiting';
         room.countdownEndsAt = null;
         room.platforms = [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }];
         room.peakY = 0;
+        room.nextLevelAt = -LEVEL_INTERVAL;
     }
+}
+
+function leaveCurrentRoom(socket) {
+    const roomName = socket.data.room;
+    if (!roomName || !rooms[roomName]) return;
+    const room = rooms[roomName];
+
+    if (socket.data.spectating) {
+        room.spectators.delete(socket.id);
+    } else {
+        delete room.players[socket.id];
+        io.to(roomName).emit('playerDisconnected', socket.id);
+        checkEmptyRoom(roomName);
+    }
+    socket.leave(roomName);
+    socket.data.room = null;
+    socket.data.spectating = false;
 }
 
 function joinRoom(socket, roomName) {
     const room = rooms[roomName];
-    if (!room) return;
+    if (!room || room.state !== 'waiting') return;
+
+    leaveCurrentRoom(socket);
+    socket.leave(LOBBY);
+
+    evictBot(room, roomName);
 
     const color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
     room.players[socket.id] = new ServerPlayer(100, 500, color);
 
     socket.join(roomName);
     socket.data.room = roomName;
+    socket.data.spectating = false;
 
     if (Object.keys(room.players).length === 1 && !room.countdownEndsAt) {
         startCountdown(roomName);
     }
 
+    fillBots(roomName);
+
     socket.emit('currentPlayers', room.players);
     socket.emit('platforms', room.platforms);
     socket.emit('roomState', { state: room.state, countdownEndsAt: room.countdownEndsAt });
+    socket.emit('spectating', false);
     socket.to(roomName).emit('newPlayer', { id: socket.id, player: room.players[socket.id] });
 }
 
-function leaveRoom(socket) {
-    const roomName = socket.data.room;
-    if (!roomName || !rooms[roomName]) return;
+function spectateRoom(socket, roomName) {
+    const room = rooms[roomName];
+    if (!room) return;
 
-    delete rooms[roomName].players[socket.id];
-    socket.leave(roomName);
-    io.to(roomName).emit('playerDisconnected', socket.id);
-    checkEmptyRoom(roomName);
-    socket.data.room = null;
+    leaveCurrentRoom(socket);
+    socket.leave(LOBBY);
+
+    room.spectators.add(socket.id);
+    socket.join(roomName);
+    socket.data.room = roomName;
+    socket.data.spectating = true;
+
+    socket.emit('currentPlayers', room.players);
+    socket.emit('platforms', room.platforms);
+    socket.emit('roomState', { state: room.state, countdownEndsAt: room.countdownEndsAt });
+    socket.emit('spectating', true);
 }
+
+function quickJoin(socket) {
+    joinRoom(socket, findJoinableRoom());
+}
+
+createRoom();
 setInterval(() => {
     for (const roomName in rooms) {
         const room = rooms[roomName];
@@ -190,7 +426,7 @@ setInterval(() => {
         room.peakY = Math.min(room.peakY, leadY);
 
         const before = room.platforms.length;
-        generatePlatforms(room.platforms, leadY - LOOKAHEAD);
+        generatePlatforms(room, leadY - LOOKAHEAD);
         const afterGenerate = room.platforms.length;
         cleanPlatforms(room);
         const afterClean = room.platforms.length;
@@ -199,24 +435,33 @@ setInterval(() => {
             io.to(roomName).emit('platforms', room.platforms);
         }
 
+        for (const id in room.players) {
+            const p = room.players[id];
+            if (!p.isBot) continue;
+            updateBot(p, room, TICK_SECONDS);
+            checkBotDeath(room, roomName, id, p, TICK_SECONDS);
+            io.to(roomName).emit('playerMoved', { id, x: p.x, y: p.y });
+        }
+
         checkRoundEnd(roomName);
     }
-}, 300);
+
+    broadcastRoomList();
+}, TICK_MS);
 
 io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
+    socket.join(LOBBY);
+    socket.emit('roomList', Object.values(rooms).map(roomSummary));
 
     socket.on('joinRoom', (roomName) => joinRoom(socket, roomName));
-
-    socket.on('switchRoom', (newRoomName) => {
-        leaveRoom(socket);
-        joinRoom(socket, newRoomName);
-    });
+    socket.on('spectateRoom', (roomName) => spectateRoom(socket, roomName));
+    socket.on('quickJoin', () => quickJoin(socket));
 
     socket.on('playerMovement', (movementData) => {
         const roomName = socket.data.room;
         const room = rooms[roomName];
-        if (room && room.players[socket.id]) {
+        if (room && room.players[socket.id] && !socket.data.spectating) {
             room.players[socket.id].x = movementData.x;
             room.players[socket.id].y = movementData.y;
             io.to(roomName).emit('playerMoved', { id: socket.id, x: movementData.x, y: movementData.y });
@@ -229,13 +474,15 @@ io.on('connection', (socket) => {
         if (room && room.players[socket.id] && room.players[socket.id].alive) {
             room.players[socket.id].alive = false;
             socket.to(roomName).emit('playerDied', socket.id);
+            socket.join(LOBBY); 
+            socket.emit('roomList', Object.values(rooms).map(roomSummary));
             checkRoundEnd(roomName);
         }
     });
 
     socket.on('disconnect', () => {
         console.log(`Player disconnected: ${socket.id}`);
-        leaveRoom(socket);
+        leaveCurrentRoom(socket);
     });
 });
 

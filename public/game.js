@@ -4,7 +4,6 @@ let ctx;
 const fric = 0.1;
 const accel = 1;
 const maxSpeed = 5;
-let jumpHeight = 5;
 const camera = {
     y: 0,
     width: 800,
@@ -20,7 +19,6 @@ let grav = 0.1;
 let platforms = [
     { x: 0, y: 580, width: 800, height: 20, type: 'solid' }
 ];
-
 let players = {};
 let alivePlayers = {};
 
@@ -28,65 +26,13 @@ let localPlayer = null;
 let myId = null;
 let lastFrameTime = null;
 
+
 let gameStarted = false;
 let loopStarted = false;
 let currentRoom = null;
 let roomState = 'waiting';
 let countdownEndsAt = null;
-
-class col {
-    static checkAABB(a, b) {
-        return a.x < b.x + b.width &&
-               a.x + a.width > b.x &&
-               a.y < b.y + b.height &&
-               a.y + a.height > b.y;
-    }
-    static resolvePass(player, platform) {
-        const box = player.getHitbox();
-
-        if (this.checkAABB(box, platform)) {
-            const isFalling = player.jump > 0;
-            const playerFeet = box.y + box.height;
-            const wasAboveBefore = (playerFeet - player.jump) <= platform.y + 4;
-
-            if (isFalling && wasAboveBefore) {
-                player.y = platform.y - player.hitbox.offsetY - player.hitbox.height;
-                return true;
-            }
-        }
-        return false;
-    }
-    static resolveSolid(player, platform) {
-        const box = player.getHitbox();
-
-        if (!this.checkAABB(box, platform)) return false;
-
-        if (platform.type === 'boost') {
-            jumpHeight = 8;
-        }
-
-        const overlapX = Math.min(box.x + box.width, platform.x + platform.width) - Math.max(box.x, platform.x);
-        const overlapY = Math.min(box.y + box.height, platform.y + platform.height) - Math.max(box.y, platform.y);
-
-        if (overlapX < overlapY) {
-            if (box.x + box.width / 2 < platform.x + platform.width / 2) {
-                player.x -= overlapX;
-            } else {
-                player.x += overlapX;
-            }
-            player.speed = 0;
-        } else {
-            if (box.y + box.height / 2 < platform.y + platform.height / 2) {
-                player.y -= overlapY;
-            } else {
-                player.y += overlapY;
-                player.jump = 0;
-
-            }
-        }
-        return true;
-    }
-}
+let isSpectating = false;
 
 class Player {
     constructor(x, y, color) {
@@ -94,6 +40,7 @@ class Player {
         this.y = y;
         this.speed = 0;
         this.jump = 0;
+        this.jumpPower = 5;
         this.color = color;
         this.grounded = false;
         this.hitbox = {
@@ -121,7 +68,7 @@ class Player {
         this.jump = 0;
         this.offScreenTimer = 0;
         socket.emit('playerDied');
-        setMenuView('select');
+        setMenuView('select'); 
     }
     update(dt) {
         if (!this.alive) return;
@@ -130,13 +77,9 @@ class Player {
         let check = false;
         this.grounded = false;
         for (let platform of platforms) {
-            if (platform.type === 'solid') {
-                check = col.resolveSolid(this, platform);
-            }
-            else if (platform.type === 'pass') {
+            if (platform.type === 'pass') {
                 check = col.resolvePass(this, platform);
-            }
-            else if (platform.type === 'boost') {
+            } else {
                 check = col.resolveSolid(this, platform);
             }
             if (check) {
@@ -164,10 +107,10 @@ class Player {
             this.speed = 0;
         }
         if ((keys.ArrowUp || keys2.W || keys.Space) && this.grounded) {
-            this.jump -= jumpHeight;
+            this.jump -= this.jumpPower;
             moved = true;
-            if (jumpHeight == 8) {
-                jumpHeight = 5;
+            if (this.jumpPower === 8) {
+                this.jumpPower = 5;
             }
         }
         if (keys.ArrowDown || keys2.S) {
@@ -195,6 +138,7 @@ class Player {
         this.x -= this.speed;
 
         this.screenY = this.y - camera.y;
+
         if (roomState === 'active') {
             const box = this.getHitbox();
             const screenBottom = camera.y + camera.height;
@@ -291,7 +235,7 @@ socket.on('currentPlayers', (serverPlayers) => {
     }
 
     const sData = players[myId];
-    if (sData) {
+    if (sData && !isSpectating) {
         if (!localPlayer) {
             localPlayer = new Player(sData.x, sData.y, sData.color);
         } else {
@@ -331,17 +275,72 @@ socket.on('roomState', (data) => {
     countdownEndsAt = data.countdownEndsAt;
     setMenuView(roomState === 'waiting' ? 'waiting' : 'none');
 });
+socket.on('spectating', (val) => {
+    isSpectating = !!val;
+    if (isSpectating) {
+        localPlayer = null;
+    }
+    setMenuView('none');
+    tryStartLoop();
+});
+socket.on('roomList', (list) => {
+    renderRoomList(list);
+});
 socket.on('roundEnded', () => {
 });
 
 function chooseServer(roomName) {
     gameStarted = true;
-    if (currentRoom) {
-        socket.emit('switchRoom', roomName);
-    } else {
-        socket.emit('joinRoom', roomName);
-    }
     currentRoom = roomName;
+    socket.emit('joinRoom', roomName);
+}
+
+function spectateServer(roomName) {
+    gameStarted = true;
+    currentRoom = roomName;
+    socket.emit('spectateRoom', roomName);
+}
+
+function quickJoin() {
+    gameStarted = true;
+    socket.emit('quickJoin');
+}
+
+function renderRoomList(list) {
+    const container = document.getElementById('roomListEl');
+    if (!container) return;
+    container.innerHTML = '';
+
+    list.forEach((r) => {
+        const row = document.createElement('div');
+        row.className = 'room-row';
+
+        const label = document.createElement('span');
+        let statusText;
+        if (r.state === 'waiting') {
+            const secondsLeft = r.countdownEndsAt
+                ? Math.max(0, Math.ceil((r.countdownEndsAt - Date.now()) / 1000))
+                : null;
+            statusText = secondsLeft !== null ? `starts in ${secondsLeft}s` : 'waiting for players';
+        } else {
+            statusText = 'in progress';
+        }
+        label.textContent = `${r.name} — ${r.playerCount}p / ${r.botCount} bots (${statusText})`;
+
+        const btn = document.createElement('button');
+        btn.className = 'serverBtn small';
+        if (r.state === 'waiting') {
+            btn.textContent = 'Join';
+            btn.addEventListener('click', () => chooseServer(r.name));
+        } else {
+            btn.textContent = 'Spectate';
+            btn.addEventListener('click', () => spectateServer(r.name));
+        }
+
+        row.appendChild(label);
+        row.appendChild(btn);
+        container.appendChild(row);
+    });
 }
 
 function setMenuView(view) {
@@ -420,13 +419,22 @@ function update(timestamp) {
             ctx.fillText('You Died', canvas.width / 2, canvas.height / 2);
             ctx.restore();
         }
+
+        if (isSpectating) {
+            ctx.save();
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Spectating ${currentRoom || ''}`, 10, 24);
+            ctx.restore();
+        }
     }
 
     requestAnimationFrame(update);
 }
 
 function tryStartLoop() {
-    if (gameStarted && localPlayer && !loopStarted) {
+    if (gameStarted && (localPlayer || isSpectating) && !loopStarted) {
         loopStarted = true;
         requestAnimationFrame(update);
     }
@@ -441,9 +449,8 @@ window.onload = () => {
         canvas.height = camera.height;
     }
 
-    document.querySelectorAll('.serverBtn').forEach((btn) => {
-        btn.addEventListener('click', () => chooseServer(btn.dataset.room));
-    });
+    const quickJoinBtn = document.getElementById('quickJoinBtn');
+    if (quickJoinBtn) quickJoinBtn.addEventListener('click', quickJoin);
 
     setMenuView('select');
 };
