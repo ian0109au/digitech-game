@@ -7,29 +7,26 @@
 }(typeof self !== 'undefined' ? self : this, function () {
     class col {
         static checkAABB(a, b) {
-            return a.x < b.x + b.width &&
-                   a.x + a.width > b.x &&
-                   a.y < b.y + b.height &&
-                   a.y + a.height > b.y;
+            return a.x < b.x + b.width && a.x + a.width > b.x &&a.y < b.y + b.height &&a.y + a.height > b.y;
         }
-        static resolvePass(entity, platform) {
+        static passThrough(entity, platform) {
             const box = entity.getHitbox();
 
-            if (this.checkAABB(box, platform)) {
+            if (this.checkAABB(box, platform) == true) {
                 const isFalling = entity.jump > 0;
                 const feet = box.y + box.height;
-                const wasAboveBefore = (feet - entity.jump) <= platform.y + 4;
+                const above = (feet - entity.jump) <= platform.y + 4;
 
-                if (isFalling && wasAboveBefore) {
+                if (isFalling && above) {
                     entity.y = platform.y - entity.hitbox.offsetY - entity.hitbox.height;
                     return true;
                 }
             }
             return false;
         }
-        static resolveSolid(entity, platform) {
+        static solid(entity, platform) {
             const box = entity.getHitbox();
-            if (!this.checkAABB(box, platform)) return false;
+            if (this.checkAABB(box, platform) == false) return false;
 
             if (platform.type === 'boost') {
                 entity.jumpPower = 8;
