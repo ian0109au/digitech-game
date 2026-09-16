@@ -1,35 +1,36 @@
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory();
+        module.exports = factory()
     } else {
-        root.col = factory();
+        root.col = factory()
     }
 }(typeof self !== 'undefined' ? self : this, function () {
     class col {
         static checkAABB(a, b) {
-            return a.x < b.x + b.width && a.x + a.width > b.x &&a.y < b.y + b.height &&a.y + a.height > b.y;
+            return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
         }
         static passThrough(entity, platform) {
-            const box = entity.getHitbox();
+            const box = entity.getHitbox()
 
             if (this.checkAABB(box, platform) == true) {
-                const isFalling = entity.jump > 0;
-                const feet = box.y + box.height;
-                const above = (feet - entity.jump) <= platform.y + 4;
+                const isFalling = entity.jump > 0
+                const feet = box.y + box.height
+                const above = (feet - entity.jump) <= platform.y + 4
 
                 if (isFalling && above) {
-                    entity.y = platform.y - entity.hitbox.offsetY - entity.hitbox.height;
-                    return true;
+                    entity.y = platform.y - entity.hitbox.offsetY - entity.hitbox.height
+                    return true
                 }
             }
-            return false;
+            return false
         }
         static solid(entity, platform) {
-            const box = entity.getHitbox();
-            if (this.checkAABB(box, platform) == false) return false;
+            const box = entity.getHitbox()
+            if (this.checkAABB(box, platform) == false) return false
 
             if (platform.type === 'boost') {
-                entity.jumpPower = 8;
+                entity.jumpPower = 10
+                entity.jumpHeight = 8
             }
 
             const overlapX = Math.min(box.x + box.width, platform.x + platform.width) - Math.max(box.x, platform.x);
@@ -49,6 +50,10 @@
                     entity.y += overlapY;
                     entity.jump = 0;
                 }
+            }
+
+            if (platform.type !== 'boost' && entity.jumpPower != false) {
+                entity.jumpPower = entity.jumpHeight || 5;
             }
             return true;
         }
