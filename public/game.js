@@ -21,12 +21,42 @@ var countEnd = false
 var spec = false
 var cash = 0
 
-const settingsSchema = []
-const shopItems = []
+const settingsSchema = [
+    { id: 'screenShake', label: 'Screen shake', type: 'toggle', default: true },
+    { id: 'cameraSpeed', label: 'Camera speed', type: 'range', min: 1, max: 10, default: 5 },
+    { id: 'playerColor', label: 'Player color', type: 'select', options: ['green', 'blue', 'orange'], default: 'green' }
+]
+const shopItems = [
+    {
+        id: 'starter', name: 'Starter', price: 0, color: 'rgb(79, 216, 196)',
+        description: 'The free all-rounder. Nothing fancy, just gets the job done.',
+        stats: { jumpHeight: 5, maxSpeed: 5, acceleration: 1, gravity: 0.1 }
+    },
+    {
+        id: 'sprinter', name: 'Sprinter', price: 100, color: 'rgb(255, 159, 91)',
+        description: 'A quick character that is good at getting across small gaps.',
+        stats: { jumpHeight: 5, maxSpeed: 7, acceleration: 1.4, gravity: 0.1 }
+    },
+    {
+        id: 'jumper', name: 'Jumper', price: 250, color: 'rgb(126, 168, 255)',
+        description: 'A lighter character with a big jump and a little less control in the air.',
+        stats: { jumpHeight: 8, maxSpeed: 5, acceleration: 1, gravity: 0.08 }
+    },
+    {
+        id: 'tank', name: 'Tank', price: 500, color: 'rgb(192, 132, 252)',
+        description: 'A heavy character that falls faster but keeps a steady pace.',
+        stats: { jumpHeight: 4, maxSpeed: 4, acceleration: 0.8, gravity: 0.16 }
+    }
+]
 
-var selectedItemId = localStorage.getItem('shopSelectedItem') || false
+var selectedItemId = localStorage.getItem('shopSelectedItem') || 'starter'
+var openItemId = selectedItemId
 
-function loadSettings() {
+function getCharacter(id) {
+    return shopItems.find((item) => item.id == id) || shopItems[0]
+}
+
+function getSets() {
     var stored = {}
     try {
         stored = JSON.parse(localStorage.getItem('gameSettings')) || {}
@@ -39,25 +69,29 @@ function loadSettings() {
     })
     return values
 }
-function saveSettings() {
+function saveSet() {
     localStorage.setItem('gameSettings', JSON.stringify(settings))
 }
-function getSetting(id) {
+function getSet(id) {
     return settings[id]
 }
-const settings = loadSettings()
+const settings = getSets()
 
 
 
 class Player {
     constructor(x, y, color) {
+        const char = getCharacter(selectedItemId)
         this.x = x
         this.y = y
         this.speed = 0
         this.jump = 0
-        this.jumpHeight = 5
-        this.jumpPower = 5
-        this.color = color
+        this.jumpHeight = char.stats.jumpHeight
+        this.jumpPower = char.stats.jumpHeight
+        this.maxSpeed = char.stats.maxSpeed
+        this.acceleration = char.stats.acceleration
+        this.gravity = char.stats.gravity
+        this.color = char.color || color
         this.grounded = false
         this.hitbox = {offsetX: 0, offsetY: 0, width: 20, height: 20}
         this.screenY = 0
@@ -112,16 +146,16 @@ class Player {
             this.jumpPower = this.jumpHeight
         }
         if (keys.ArrowDown == true || keys2.S == true) {
-            grav = 0.5
+            grav = this.gravity * 5
         } else {
-            grav = 0.1
+            grav = this.gravity
         }
         if (keys.ArrowLeft == true || keys2.A == true) {
-            this.speed = Math.min(this.speed + accel, maxSpeed)
+            this.speed = Math.min(this.speed + this.acceleration, this.maxSpeed)
             moved = true
         }
         if (keys.ArrowRight == true || keys2.D == true) {
-            this.speed = Math.max(this.speed - accel, -maxSpeed)
+            this.speed = Math.max(this.speed - this.acceleration, -this.maxSpeed)
             moved = true
         }
         this.jump += grav
@@ -170,7 +204,7 @@ function getAlive() {
 }
 function cameraU(dt) {
     var limit = camera.y
-    const leadPlayer = topPlayer(getAlive)
+    const leadPlayer = topPlayer(getAlive())
 
     if (leadPlayer != false) {
         const screenY = leadPlayer.y - camera.y
@@ -282,7 +316,7 @@ socket.on('roundEnded', () => {
 function choose(rname) {
     start = true;
     room = rname;
-    socket.emit('joinRoom', rname);
+    socket.emit('joinRoom', rname, selectedItemId);
 }
 function Spectate(rname) {
     start = true;
@@ -291,7 +325,7 @@ function Spectate(rname) {
 }
 function join() {
     start = true;
-    socket.emit('join');
+    socket.emit('join', selectedItemId);
 }
 function roomList(list) {
     const container = document.getElementById('roomListEl');
@@ -371,7 +405,7 @@ function renderSettings() {
             input.checked = !!settings[s.id];
             input.addEventListener('change', () => {
                 settings[s.id] = input.checked;
-                saveSettings();
+                saveSet();
             });
         } else if (s.type === 'range') {
             input = document.createElement('input');
@@ -381,7 +415,7 @@ function renderSettings() {
             input.value = settings[s.id];
             input.addEventListener('input', () => {
                 settings[s.id] = Number(input.value);
-                saveSettings();
+                saveSet();
             });
         } else if (s.type === 'select') {
             input = document.createElement('select');
@@ -394,7 +428,7 @@ function renderSettings() {
             input.value = settings[s.id];
             input.addEventListener('change', () => {
                 settings[s.id] = input.value;
-                saveSettings();
+                saveSet();
             });
         } else {
             input = document.createElement('input');
@@ -402,7 +436,7 @@ function renderSettings() {
             input.value = settings[s.id] != false ? settings[s.id] : '';
             input.addEventListener('input', () => {
                 settings[s.id] = input.value;
-                saveSettings();
+                saveSet();
             });
         }
         row.appendChild(input);
@@ -417,6 +451,25 @@ function renderShop() {
     balance.className = 'shop-balance';
     balance.textContent = `Balance: $${Math.floor(cash)}`;
     container.appendChild(balance);
+    const chosen = getCharacter(openItemId)
+    if (chosen != false) {
+        const details = document.createElement('div')
+        details.className = 'option-row'
+        details.style.display = 'block'
+        const title = document.createElement('div')
+        title.className = 'room-name'
+        title.textContent = chosen.name
+        const desc = document.createElement('p')
+        desc.className = 'room-meta'
+        desc.textContent = chosen.description
+        const stats = document.createElement('div')
+        stats.className = 'room-meta'
+        stats.textContent = `Jump height: ${chosen.stats.jumpHeight} | Max speed: ${chosen.stats.maxSpeed} | Acceleration: ${chosen.stats.acceleration} | Gravity: ${chosen.stats.gravity}`
+        details.appendChild(title)
+        details.appendChild(desc)
+        details.appendChild(stats)
+        container.appendChild(details)
+    }
     if (shopItems.length === 0) {
         const empty = document.createElement('p');
         empty.className = 'empty-state';
@@ -427,6 +480,10 @@ function renderShop() {
     shopItems.forEach((item) => {
         const row = document.createElement('div');
         row.className = 'option-row';
+        row.addEventListener('click', () => {
+            openItemId = item.id
+            renderShop()
+        })
         const info = document.createElement('div');
         info.className = 'room-info';
         const name = document.createElement('span');
@@ -436,7 +493,7 @@ function renderShop() {
         if (item.price != false) {
             const price = document.createElement('span');
             price.className = 'room-meta';
-            price.textContent = `$${item.price}`;
+            price.textContent = item.price == 0 ? 'Free' : `$${item.price}`;
             info.appendChild(price);
         }
         row.appendChild(info);
@@ -445,6 +502,7 @@ function renderShop() {
         btn.textContent = item.id === selectedItemId ? 'Selected' : 'Select';
         btn.addEventListener('click', () => {
             selectedItemId = item.id;
+            openItemId = item.id
             localStorage.setItem('shopSelectedItem', selectedItemId);
             renderShop();
         });

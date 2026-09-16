@@ -19,6 +19,12 @@ const leaderRate = 2
 const killReward = 50
 const winReward = 500
 const winGoalY = -5000
+const charColors = {
+    starter: 'rgb(79, 216, 196)',
+    sprinter: 'rgb(255, 159, 91)',
+    jumper: 'rgb(126, 168, 255)',
+    tank: 'rgb(192, 132, 252)'
+}
 class ServerPlayer {
     constructor(x, y, color) {
         this.x = x;
@@ -239,12 +245,13 @@ function leaveRoom(socket) {
     socket.data.room = false
     socket.data.spectating = false
 }
-function joinRoom(socket, roomName) {
+function joinRoom(socket, roomName, charId) {
     const room = rooms[roomName]
-    if (room == false || room.state !== 'waiting') return
+    if (room == null || room.state !== 'waiting') return
     leaveRoom(socket)
     socket.leave(LOBBY)
-    const color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')
+    charId = charColors[charId] ? charId : 'starter'
+    const color = charColors[charId]
     room.players[socket.id] = new ServerPlayer(100, 500, color)
     socket.join(roomName)
     socket.data.room = roomName
@@ -260,7 +267,7 @@ function joinRoom(socket, roomName) {
 }
 function spectate(socket, roomName) {
     const room = rooms[roomName]
-    if (room == false) return
+    if (room == null) return
     leaveRoom(socket)
     socket.leave(LOBBY)
     room.spectators.add(socket.id)
@@ -272,8 +279,8 @@ function spectate(socket, roomName) {
     socket.emit('roomState', { state: room.state, countdownEndsAt: room.countdownEndsAt })
     socket.emit('spectating', true)
 }
-function join(socket) {
-    joinRoom(socket, findRoom())
+function join(socket, charId) {
+    joinRoom(socket, findRoom(), charId)
 }
 function sendMoves(name, room) {
     for (const id in room.players) {
@@ -330,9 +337,9 @@ io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
     socket.join(LOBBY);
     socket.emit('roomList', Object.values(rooms).map(roomSummary));
-    socket.on('joinRoom', (roomName) => joinRoom(socket, roomName));
+    socket.on('joinRoom', (roomName, charId) => joinRoom(socket, roomName, charId));
     socket.on('spectate', (roomName) => spectate(socket, roomName));
-    socket.on('join', () => join(socket));
+    socket.on('join', (charId) => join(socket, charId));
     socket.on('move', (movementData) => {
         const roomName = socket.data.room;
         const room = rooms[roomName];
