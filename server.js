@@ -1,37 +1,47 @@
-const express = require('express')
-const http = require('http')
-const { Server } = require('socket.io')
-const col = require('./public/shared/physics.js')
-const app = express()
-const server = http.createServer(app)
-const io = new Server(server)
+var express = require('express')
+var http = require('http')
+var { Server } = require('socket.io')
+var col = require('./public/shared/physics.js')
+var app = express()
+var server = http.createServer(app)
+var io = new Server(server)
 app.use(express.static('public'))
-const startDelay = 30000
-const Dip = 600
-const look = 800
-const cameraY = 600
-const levelGap = 2000
-const tick = 100
-const ticks = tick / 1000
-const LOBBY = 'lobby'
-const surviveRate = 1
-const leaderRate = 2
-const killReward = 50
-const winReward = 500
-const winGoalY = -5000
-const charColors = {
-    starter: 'rgb(79, 216, 196)',
-    sprinter: 'rgb(255, 159, 91)',
-    jumper: 'rgb(126, 168, 255)',
-    tank: 'rgb(192, 132, 252)'
+var startDelay = 30000
+var Dip = 600
+var look = 800
+var cameraY = 600
+var levelGap = 2000
+var tick = 100
+var ticks = tick / 1000
+var LOBBY = 'lobby'
+var surviveRate = 1
+var leaderRate = 2
+var killReward = 50
+var winReward = 500
+var winGoalY = -5000
+class Character {
+    constructor(id, price, color) {
+        this.id = id
+        this.price = price
+        this.stats = { color }
+    }
+}
+const characters = [
+    new Character('starter', 0, 'rgb(79, 216, 196)'),
+    new Character('sprinter', 100, 'rgb(255, 159, 91)'),
+    new Character('jumper', 250, 'rgb(126, 168, 255)'),
+    new Character('tank', 500, 'rgb(192, 132, 252)')
+]
+function getCharacter(id) {
+    return characters.find((char) => char.id == id) || characters[0]
 }
 class ServerPlayer {
-    constructor(x, y, color) {
-        this.x = x;
-        this.y = y;
-        this.color = color;
-        this.alive = true;
-        this.money = 0;
+    constructor(x, y, color, money) {
+        this.x = x
+        this.y = y
+        this.color = color
+        this.alive = true
+        this.money = money || 0
     }
 }
 const levels = [
@@ -251,6 +261,7 @@ function leaveRoom(socket) {
     if (socket.data.spectating == true) {
         room.spectators.delete(socket.id)
     } else {
+        if (room.players[socket.id] != null) socket.data.money = room.players[socket.id].money
         delete room.players[socket.id]
         io.to(roomName).emit('disconnect', socket.id)
         emptyRoom(roomName)
@@ -265,9 +276,9 @@ function joinRoom(socket, roomName, charId) {
     leaveRoom(socket)
     socket.leave(LOBBY)
     socket.join(roomName)
-    charId = charColors[charId] ? charId : 'starter'
-    const color = charColors[charId]
-    room.players[socket.id] = new ServerPlayer(100, 500, color)
+    const char = getCharacter(charId)
+    const color = char.stats.color || char.color || 'rgb(255, 255, 255)'
+    room.players[socket.id] = new ServerPlayer(100, 500, color, socket.data.money)
     socket.data.room = roomName
     socket.data.spectating = false
     if (Object.keys(room.players).length === 1 && room.countdownEndsAt == false) {
@@ -295,6 +306,17 @@ function spectate(socket, roomName) {
 }
 function join(socket, charId) {
     joinRoom(socket, findRoom(), charId)
+}
+function buyCharacter(socket, charId) {
+    const char = getCharacter(charId)
+    var price = char.price
+    var money = socket.data.money || 0
+    if (money < price) {
+        socket.emit('purchaseDenied', { needed: price, money })
+        return
+    }
+    socket.data.money = money - price
+    socket.emit('characterBought', { id: char.id, money: socket.data.money })
 }
 function sendMoves(name, room) {
     for (const id in room.players) {
@@ -349,11 +371,13 @@ setInterval(() => {
 }, tick)
 io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
+    socket.data.money = 0
     socket.join(LOBBY);
     socket.emit('roomList', Object.values(rooms).map(roomSummary));
     socket.on('joinRoom', (roomName, charId) => joinRoom(socket, roomName, charId));
     socket.on('spectate', (roomName) => spectate(socket, roomName));
     socket.on('join', (charId) => join(socket, charId));
+    socket.on('buyCharacter', (charId) => buyCharacter(socket, charId));
     socket.on('leaveRoom', () => {
         leaveRoom(socket)
         socket.join(LOBBY)

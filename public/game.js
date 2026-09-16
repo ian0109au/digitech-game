@@ -1,10 +1,10 @@
 const socket = io()
 var canvas
 var ctx
-const fric = 0.1
-const accel = 1
-const maxSpeed = 5
-const camera = {y:0,width:800,height:600,scroll:0.1,paddingTop:150,paddingBottom:250,peak:0,dip:600}
+var fric = 0.1
+var accel = 1
+var maxSpeed = 5
+var camera = {y:0,width:800,height:600,scroll:0.1,paddingTop:150,paddingBottom:250,peak:0,dip:600}
 var grav = 0.1
 var plats = [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }]
 var players = {}
@@ -13,41 +13,35 @@ var me = false
 var myId = false
 var last = false
 
+// a bit rougher, but still works
+
 var start = false
 var lstart = false
 var room = false
 var rstate = 'waiting'
 var countEnd = false
 var spec = false
-var cash = 0
+var cash = Number(localStorage.getItem('gameCash')) || 0
 var countTimer = false
 
-const settingsSchema = [
+var settingsSchema = [
     { id: 'screenShake', label: 'Screen shake', type: 'toggle', default: true },
-    { id: 'cameraSpeed', label: 'Camera speed', type: 'range', min: 1, max: 10, default: 5 },
-    { id: 'playerColor', label: 'Player color', type: 'select', options: ['green', 'blue', 'orange'], default: 'green' }
+    { id: 'cameraSpeed', label: 'Camera speed', type: 'range', min: 1, max: 10, default: 5 }
 ]
-const shopItems = [
-    {
-        id: 'starter', name: 'Starter', price: 0, color: 'rgb(79, 216, 196)',
-        description: 'The free all-rounder. Nothing fancy, just gets the job done.',
-        stats: { jumpHeight: 5, maxSpeed: 5, acceleration: 1, gravity: 0.1 }
-    },
-    {
-        id: 'sprinter', name: 'Sprinter', price: 100, color: 'rgb(255, 159, 91)',
-        description: 'A quick character that is good at getting across small gaps.',
-        stats: { jumpHeight: 5, maxSpeed: 7, acceleration: 1.4, gravity: 0.1 }
-    },
-    {
-        id: 'jumper', name: 'Jumper', price: 250, color: 'rgb(126, 168, 255)',
-        description: 'A lighter character with a big jump and a little less control in the air.',
-        stats: { jumpHeight: 8, maxSpeed: 5, acceleration: 1, gravity: 0.08 }
-    },
-    {
-        id: 'tank', name: 'Tank', price: 500, color: 'rgb(192, 132, 252)',
-        description: 'A heavy character that falls faster but keeps a steady pace.',
-        stats: { jumpHeight: 4, maxSpeed: 4, acceleration: 0.8, gravity: 0.16 }
+class Character {
+    constructor(id, name, price, description, jumpHeight, maxSpeed, acceleration, gravity, color) {
+        this.id = id
+        this.name = name
+        this.price = price
+        this.description = description
+        this.stats = { jumpHeight, maxSpeed, acceleration, gravity, color }
     }
+}
+var shopItems = [
+    new Character('starter', 'Starter', 0, 'The free all-rounder. Nothing fancy, just gets the job done.', 5, 5, 1, 0.1, 'rgb(79, 216, 196)'),
+    new Character('sprinter', 'Sprinter', 100, 'A quick character that is good at getting across small gaps.', 5, 7, 1.4, 0.1, 'rgb(255, 159, 91)'),
+    new Character('jumper', 'Jumper', 250, 'A lighter character with a big jump and a little less control in the air.', 8, 5, 1, 0.08, 'rgb(126, 168, 255)'),
+    new Character('tank', 'Tank', 500, 'A heavy character that falls faster but keeps a steady pace.', 4, 4, 0.8, 0.16, 'rgb(192, 132, 252)')
 ]
 
 var selectedItemId = localStorage.getItem('shopSelectedItem') || 'starter'
@@ -70,6 +64,9 @@ function getSets() {
     })
     return values
 }
+
+// not perfect, but good enough for a quick hand-built thing
+
 function saveSet() {
     localStorage.setItem('gameSettings', JSON.stringify(settings))
 }
@@ -92,7 +89,7 @@ class Player {
         this.maxSpeed = char.stats.maxSpeed
         this.acceleration = char.stats.acceleration
         this.gravity = char.stats.gravity
-        this.color = char.color || color
+        this.color = char.stats.color || char.color || color
         this.grounded = false
         this.hitbox = {offsetX: 0, offsetY: 0, width: 20, height: 20}
         this.screenY = 0
@@ -271,7 +268,8 @@ socket.on('currentPlayers', (serverPlayers) => {
             me.jump = 0
             me.offScreenTimer = 0
         }
-        cash = sData.money || 0
+        cash = sData.money != false ? sData.money : cash
+        localStorage.setItem('gameCash', cash)
         updateMoneyHud()
     }
     loopStart()
@@ -296,8 +294,21 @@ socket.on('die', (id) => {
 socket.on('money', (data) => {
     if (data[myId] != false) {
         cash = data[myId]
+        localStorage.setItem('gameCash', cash)
         updateMoneyHud()
     }
+})
+socket.on('characterBought', (data) => {
+    selectedItemId = data.id
+    openItemId = data.id
+    cash = data.money
+    localStorage.setItem('shopSelectedItem', selectedItemId)
+    localStorage.setItem('gameCash', cash)
+    updateMoneyHud()
+    renderShop()
+})
+socket.on('purchaseDenied', () => {
+    renderShop()
 })
 socket.on('platforms', (serverPlatforms) => {
     plats = serverPlatforms
@@ -440,6 +451,13 @@ function renderSettings() {
     const container = document.getElementById('settingsListEl');
     if (container == false) return;
     container.innerHTML = '';
+    const char = getCharacter(selectedItemId)
+    const stats = document.createElement('div')
+    stats.className = 'option-row'
+    stats.style.display = 'block'
+    const color = char.stats.color || char.color || 'rgb(255, 255, 255)'
+    stats.innerHTML = `<strong>${char.name} stats</strong><br>Jump height: ${char.stats.jumpHeight}<br>Max speed: ${char.stats.maxSpeed}<br>Acceleration: ${char.stats.acceleration}<br>Gravity: ${char.stats.gravity}<br>Color: ${color}`
+    container.appendChild(stats)
     if (settingsSchema.length === 0) {
         const empty = document.createElement('p');
         empty.className = 'empty-state';
@@ -520,7 +538,8 @@ function renderShop() {
         desc.textContent = chosen.description
         const stats = document.createElement('div')
         stats.className = 'room-meta'
-        stats.textContent = `Jump height: ${chosen.stats.jumpHeight} | Max speed: ${chosen.stats.maxSpeed} | Acceleration: ${chosen.stats.acceleration} | Gravity: ${chosen.stats.gravity}`
+        const color = chosen.stats.color || chosen.color || 'rgb(255, 255, 255)'
+        stats.textContent = `Jump height: ${chosen.stats.jumpHeight} | Max speed: ${chosen.stats.maxSpeed} | Acceleration: ${chosen.stats.acceleration} | Gravity: ${chosen.stats.gravity} | Color: ${color}`
         details.appendChild(title)
         details.appendChild(desc)
         details.appendChild(stats)
@@ -555,12 +574,10 @@ function renderShop() {
         row.appendChild(info);
         const btn = document.createElement('button');
         btn.className = 'serverBtn small';
-        btn.textContent = item.id === selectedItemId ? 'Selected' : 'Select';
+        btn.textContent = item.id === selectedItemId ? 'Selected' : item.price == 0 ? 'Free' : `Buy $${item.price}`;
         btn.addEventListener('click', () => {
-            selectedItemId = item.id;
-            openItemId = item.id
-            localStorage.setItem('shopSelectedItem', selectedItemId);
-            renderShop();
+            if (item.id == selectedItemId) return
+            socket.emit('buyCharacter', item.id)
         });
         row.appendChild(btn);
         container.appendChild(row);
