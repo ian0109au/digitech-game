@@ -50,6 +50,20 @@ const levels = [
         { dx: 500, dy: -340, width: 90,  height: 15, type: 'pass'  },
         { dx: 350, dy: -420, width: 100, height: 15, type: 'solid' },
     ],
+    [
+        { dx: 0, dy: 0, width: 800, height: 15, type: 'pass' },
+        { dx: 0, dy: -120, width: 800, height: 15, type: 'pass' },
+        { dx: 0, dy: -240, width: 800, height: 15, type: 'pass' },
+        { dx: 0, dy: -360, width: 800, height: 15, type: 'pass' },
+        { dx: 0, dy: -480, width: 800, height: 15, type: 'pass' },
+    ],
+    [
+        { dx: 0, dy: 0, width: 35, height: 100, type: 'wall' },
+        { dx: 765, dy: -120, width: 35, height: 100, type: 'wall' },
+        { dx: 0, dy: -240, width: 35, height: 100, type: 'wall' },
+        { dx: 765, dy: -360, width: 35, height: 100, type: 'wall' },
+        { dx: 0, dy: -480, width: 35, height: 100, type: 'wall' },
+    ],
 ];
 var roomNo = 0
 const rooms = {}
@@ -250,10 +264,10 @@ function joinRoom(socket, roomName, charId) {
     if (room == null || room.state !== 'waiting') return
     leaveRoom(socket)
     socket.leave(LOBBY)
+    socket.join(roomName)
     charId = charColors[charId] ? charId : 'starter'
     const color = charColors[charId]
     room.players[socket.id] = new ServerPlayer(100, 500, color)
-    socket.join(roomName)
     socket.data.room = roomName
     socket.data.spectating = false
     if (Object.keys(room.players).length === 1 && room.countdownEndsAt == false) {
@@ -270,8 +284,8 @@ function spectate(socket, roomName) {
     if (room == null) return
     leaveRoom(socket)
     socket.leave(LOBBY)
-    room.spectators.add(socket.id)
     socket.join(roomName)
+    room.spectators.add(socket.id)
     socket.data.room = roomName
     socket.data.spectating = true
     socket.emit('currentPlayers', room.players)
@@ -340,6 +354,12 @@ io.on('connection', (socket) => {
     socket.on('joinRoom', (roomName, charId) => joinRoom(socket, roomName, charId));
     socket.on('spectate', (roomName) => spectate(socket, roomName));
     socket.on('join', (charId) => join(socket, charId));
+    socket.on('leaveRoom', () => {
+        leaveRoom(socket)
+        socket.join(LOBBY)
+        socket.emit('leftRoom')
+        socket.emit('roomList', Object.values(rooms).map(roomSummary))
+    })
     socket.on('move', (movementData) => {
         const roomName = socket.data.room;
         const room = rooms[roomName];

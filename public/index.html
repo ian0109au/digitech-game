@@ -211,6 +211,12 @@ Index · HTML
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         z-index: 5;
     }
+    #leaveButton {
+        position: absolute;
+        left: 14px;
+        top: 14px;
+        z-index: 6;
+    }
 </style>
 </head>
 <body>
@@ -242,6 +248,7 @@ Index · HTML
             <button id="shopBackButton" class="serverBtn small">Back</button>
         </div>
     </div>
+    <button id="leaveButton" class="serverBtn small hidden">Leave</button>
     <div id="moneyHud">$0</div>
 </div>
 <script src="/socket.io/socket.io.js"></script>

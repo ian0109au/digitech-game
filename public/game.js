@@ -114,6 +114,8 @@ class Player {
         if (this.alive == false) return
         dt = dt || 1 / 60
         var check = false
+        var wall = false
+        var wallSide = 0
         this.grounded = false
         for (var platform of plats) {
             if (platform.type == 'pass') {
@@ -121,10 +123,14 @@ class Player {
             } else {
                 check = col.solid(this, platform)
             }
+            if (platform.type == 'wall' && check == true) {
+                wall = true
+                wallSide = platform.x < canvas.width / 2 ? -1 : 1
+            }
             if (check == true) break
         }
         var moved = false
-        if (check == true) {
+        if (check == true && wall == false) {
             this.jump = 0
             this.grounded = true
         } else {
@@ -139,9 +145,10 @@ class Player {
             this.x = wallRight
             this.speed = 0
         }
-        if ((keys.ArrowUp == true || keys2.W == true || keys.Space == true) && this.grounded == true) {
+        if ((keys.ArrowUp == true || keys2.W == true || keys.Space == true) && (this.grounded == true || wall == true)) {
             const jumpForce = this.jumpPower || this.jumpHeight
             this.jump -= jumpForce
+            if (wall == true && this.grounded == false) this.speed = wallSide < 0 ? -this.maxSpeed : this.maxSpeed
             moved = true
             this.jumpPower = this.jumpHeight
         }
@@ -297,8 +304,23 @@ socket.on('platforms', (serverPlatforms) => {
 socket.on('roomState', (data) => {
     rstate = data.state;
     countEnd = data.countdownEndsAt;
+    if (rstate == 'waiting') resetView()
     view(rstate == 'waiting' ? 'waiting' : 'none');
 });
+socket.on('leftRoom', () => {
+    start = false
+    lstart = false
+    room = false
+    rstate = 'waiting'
+    countEnd = false
+    spec = false
+    me = false
+    players = {}
+    plats = [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }]
+    resetView()
+    updateMoneyHud()
+    view('select')
+})
 socket.on('spectating', (val) => {
     spec = !!val;
     if (spec == true) {
@@ -326,6 +348,15 @@ function Spectate(rname) {
 function join() {
     start = true;
     socket.emit('join', selectedItemId);
+}
+function leave() {
+    socket.emit('leaveRoom')
+}
+function resetView() {
+    camera.y = 0
+    camera.peak = 0
+    camera.dip = 600
+    last = false
 }
 function roomList(list) {
     const container = document.getElementById('roomListEl');
@@ -516,7 +547,9 @@ function view(view) {
     const waiting = document.getElementById('waitingRoom');
     const settingsPanel = document.getElementById('settingsPanel');
     const shopPanel = document.getElementById('shopPanel');
+    const leaveButton = document.getElementById('leaveButton')
     if (menu == false || select == false || waiting == false) return;
+    if (leaveButton != false) leaveButton.classList.toggle('hidden', start == false)
     if (view == 'none') {
         menu.classList.add('hidden');
         return;
@@ -620,6 +653,8 @@ window.onload = () => {
     if (settingsBackButton != false) settingsBackButton.addEventListener('click', () => view('select'))
     const shopBackButton = document.getElementById('shopBackButton')
     if (shopBackButton != false) shopBackButton.addEventListener('click', () => view('select'))
+    const leaveButton = document.getElementById('leaveButton')
+    if (leaveButton != false) leaveButton.addEventListener('click', leave)
     updateMoneyHud()
     view('select')
 }

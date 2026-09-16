@@ -36,6 +36,16 @@
             const overlapX = Math.min(box.x + box.width, platform.x + platform.width) - Math.max(box.x, platform.x);
             const overlapY = Math.min(box.y + box.height, platform.y + platform.height) - Math.max(box.y, platform.y);
 
+            if (platform.type == 'wall') {
+                if (box.x < platform.x + platform.width / 2) {
+                    entity.x -= overlapX
+                } else {
+                    entity.x += overlapX
+                }
+                entity.speed = 0
+                return true
+            }
+
             if (overlapX < overlapY) {
                 if (box.x + box.width / 2 < platform.x + platform.width / 2) {
                     entity.x -= overlapX;
