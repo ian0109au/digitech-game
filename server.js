@@ -231,7 +231,7 @@ function emptyRoom(roomName) {
 }
 function leaveRoom(socket) {
     const roomName = socket.data.room
-    if (roomName == false || rooms[roomName] == false) return
+    if (roomName == null || rooms[roomName] == null) return
     const room = rooms[roomName]
 
     if (socket.data.spectating == true) {
