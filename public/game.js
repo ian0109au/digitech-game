@@ -20,6 +20,7 @@ var rstate = 'waiting'
 var countEnd = false
 var spec = false
 var cash = 0
+var countTimer = false
 
 const settingsSchema = [
     { id: 'screenShake', label: 'Screen shake', type: 'toggle', default: true },
@@ -304,10 +305,21 @@ socket.on('platforms', (serverPlatforms) => {
 socket.on('roomState', (data) => {
     rstate = data.state;
     countEnd = data.countdownEndsAt;
-    if (rstate == 'waiting') resetView()
+    if (rstate == 'waiting') {
+        resetView()
+        showCount()
+    } else {
+        if (countTimer != false) clearInterval(countTimer)
+        countTimer = false
+    }
     view(rstate == 'waiting' ? 'waiting' : 'none');
 });
 socket.on('leftRoom', () => {
+    clearClientRoom()
+})
+function clearClientRoom() {
+    if (countTimer != false) clearInterval(countTimer)
+    countTimer = false
     start = false
     lstart = false
     room = false
@@ -320,7 +332,7 @@ socket.on('leftRoom', () => {
     resetView()
     updateMoneyHud()
     view('select')
-})
+}
 socket.on('spectating', (val) => {
     spec = !!val;
     if (spec == true) {
@@ -351,12 +363,25 @@ function join() {
 }
 function leave() {
     socket.emit('leaveRoom')
+    clearClientRoom()
 }
 function resetView() {
     camera.y = 0
     camera.peak = 0
     camera.dip = 600
     last = false
+}
+function showCount() {
+    var count = document.getElementById('countdownText')
+    if (count == false) return
+    if (countTimer != false) clearInterval(countTimer)
+    var tickCount = () => {
+        if (rstate != 'waiting' || countEnd == false) return
+        var left = Math.max(0, Math.ceil((countEnd - Date.now()) / 1000))
+        count.textContent = `Game starts in: ${left}s`
+    }
+    tickCount()
+    countTimer = setInterval(tickCount, 250)
 }
 function roomList(list) {
     const container = document.getElementById('roomListEl');
@@ -622,11 +647,6 @@ function update(timestamp) {
     }
     alive = getAlive()
     cameraU(dt)
-    if (rstate == 'waiting' && countEnd != false) {
-        const left = Math.max(0, Math.ceil((countEnd - Date.now()) / 1000))
-        var count = document.getElementById('countdownText')
-        if (count != false) count.textContent = `Game starts in: ${left}s`
-    }
     draw()
     requestAnimationFrame(update);
 }

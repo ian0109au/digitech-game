@@ -357,6 +357,7 @@ io.on('connection', (socket) => {
     socket.on('leaveRoom', () => {
         leaveRoom(socket)
         socket.join(LOBBY)
+        broadcastRoomList()
         socket.emit('leftRoom')
         socket.emit('roomList', Object.values(rooms).map(roomSummary))
     })
