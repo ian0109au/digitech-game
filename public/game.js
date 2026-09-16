@@ -18,6 +18,33 @@ let room = null;
 let rstate = 'waiting';
 let countdownEndsAt = null;
 let spectating = false;
+let myMoney = 0;
+
+const settingsSchema = [];
+const shopItems = [];
+
+let selectedItemId = localStorage.getItem('shopSelectedItem') || null;
+
+function loadSettings() {
+    let stored = {};
+    try {
+        stored = JSON.parse(localStorage.getItem('gameSettings')) || {};
+    } catch (e) {
+        stored = {};
+    }
+    const values = {};
+    settingsSchema.forEach((s) => {
+        values[s.id] = stored[s.id] != null ? stored[s.id] : s.default;
+    });
+    return values;
+}
+function saveSettings() {
+    localStorage.setItem('gameSettings', JSON.stringify(settingsValues));
+}
+function getSetting(id) {
+    return settingsValues[id];
+}
+const settingsValues = loadSettings();
 class Player {
     constructor(x, y, color) {
         this.x = x;
@@ -206,6 +233,8 @@ socket.on('currentPlayers', (serverPlayers) => {
             localPlayer.jump = 0;
             localPlayer.offScreenTimer = 0;
         }
+        myMoney = sData.money || 0;
+        updateMoneyHud();
     }
     loopStart();
 });
@@ -226,6 +255,12 @@ socket.on('die', (id) => {
         players[id].alive = false;
     }
 });
+socket.on('money', (data) => {
+    if (data[myId] != null) {
+        myMoney = data[myId];
+        updateMoneyHud();
+    }
+});
 socket.on('platforms', (serverPlatforms) => {
     platforms = serverPlatforms;
 });
@@ -239,6 +274,7 @@ socket.on('spectating', (val) => {
     if (spectating == true) {
         localPlayer = null;
     }
+    updateMoneyHud();
     view('none');
     loopStart();
 });
@@ -268,17 +304,30 @@ function roomList(list) {
     list.forEach((r) => {
         const row = document.createElement('div');
         row.className = 'room-row';
-        const label = document.createElement('span');
-        let statusText;
+
+        const info = document.createElement('div');
+        info.className = 'room-info';
+        const name = document.createElement('span');
+        name.className = 'room-name';
+        name.textContent = r.name;
+        const meta = document.createElement('span');
+        meta.className = 'room-meta';
+        meta.textContent = `${r.playerCount} players, ${r.botCount} bots`;
+        info.appendChild(name);
+        info.appendChild(meta);
+
+        const status = document.createElement('span');
         if (r.state == 'waiting') {
             const left = r.countdownEndsAt
                 ? Math.max(0, Math.ceil((r.countdownEndsAt - Date.now()) / 1000))
                 : null;
-            statusText = left != null ? `starts in ${left}s` : 'waiting for players';
+            status.textContent = left != null ? `starts in ${left}s` : 'waiting';
+            status.className = 'room-status waiting';
         } else {
-            statusText = 'in progress';
+            status.textContent = 'in progress';
+            status.className = 'room-status active';
         }
-        label.textContent = `${r.name} — ${r.playerCount}p / ${r.botCount} bots (${statusText})`;
+
         const btn = document.createElement('button');
         btn.className = 'serverBtn small';
         if (r.state == 'waiting') {
@@ -288,7 +337,121 @@ function roomList(list) {
             btn.textContent = 'Spectate';
             btn.addEventListener('click', () => Spectate(r.name));
         }
+
+        row.appendChild(info);
+        row.appendChild(status);
+        row.appendChild(btn);
+        container.appendChild(row);
+    });
+}
+function updateMoneyHud() {
+    const hud = document.getElementById('moneyHud');
+    if (hud == null) return;
+    hud.textContent = `$${Math.floor(myMoney)}`;
+    hud.classList.toggle('hidden', spectating == true);
+}
+function renderSettings() {
+    const container = document.getElementById('settingsListEl');
+    if (container == null) return;
+    container.innerHTML = '';
+    if (settingsSchema.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'empty-state';
+        empty.textContent = 'No settings yet — add entries to settingsSchema in game.js.';
+        container.appendChild(empty);
+        return;
+    }
+    settingsSchema.forEach((s) => {
+        const row = document.createElement('div');
+        row.className = 'option-row';
+        const label = document.createElement('span');
+        label.textContent = s.label;
         row.appendChild(label);
+
+        let input;
+        if (s.type === 'toggle') {
+            input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = !!settingsValues[s.id];
+            input.addEventListener('change', () => {
+                settingsValues[s.id] = input.checked;
+                saveSettings();
+            });
+        } else if (s.type === 'range') {
+            input = document.createElement('input');
+            input.type = 'range';
+            input.min = s.min != null ? s.min : 0;
+            input.max = s.max != null ? s.max : 100;
+            input.value = settingsValues[s.id];
+            input.addEventListener('input', () => {
+                settingsValues[s.id] = Number(input.value);
+                saveSettings();
+            });
+        } else if (s.type === 'select') {
+            input = document.createElement('select');
+            (s.options || []).forEach((opt) => {
+                const o = document.createElement('option');
+                o.value = opt;
+                o.textContent = opt;
+                input.appendChild(o);
+            });
+            input.value = settingsValues[s.id];
+            input.addEventListener('change', () => {
+                settingsValues[s.id] = input.value;
+                saveSettings();
+            });
+        } else {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.value = settingsValues[s.id] != null ? settingsValues[s.id] : '';
+            input.addEventListener('input', () => {
+                settingsValues[s.id] = input.value;
+                saveSettings();
+            });
+        }
+        row.appendChild(input);
+        container.appendChild(row);
+    });
+}
+function renderShop() {
+    const container = document.getElementById('shopListEl');
+    if (container == null) return;
+    container.innerHTML = '';
+    const balance = document.createElement('p');
+    balance.className = 'shop-balance';
+    balance.textContent = `Balance: $${Math.floor(myMoney)}`;
+    container.appendChild(balance);
+    if (shopItems.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'empty-state';
+        empty.textContent = 'No items yet — add entries to shopItems in game.js.';
+        container.appendChild(empty);
+        return;
+    }
+    shopItems.forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'option-row';
+        const info = document.createElement('div');
+        info.className = 'room-info';
+        const name = document.createElement('span');
+        name.className = 'room-name';
+        name.textContent = item.name;
+        info.appendChild(name);
+        if (item.price != null) {
+            const price = document.createElement('span');
+            price.className = 'room-meta';
+            price.textContent = `$${item.price}`;
+            info.appendChild(price);
+        }
+        row.appendChild(info);
+        const btn = document.createElement('button');
+        btn.className = 'serverBtn small';
+        btn.textContent = item.id === selectedItemId ? 'Selected' : 'Select';
+        btn.addEventListener('click', () => {
+            selectedItemId = item.id;
+            localStorage.setItem('shopSelectedItem', selectedItemId);
+            renderShop();
+        });
         row.appendChild(btn);
         container.appendChild(row);
     });
@@ -297,6 +460,8 @@ function view(view) {
     const menu = document.getElementById('menu');
     const select = document.getElementById('serverSelect');
     const waiting = document.getElementById('waitingRoom');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const shopPanel = document.getElementById('shopPanel');
     if (menu == null || select == null || waiting == null) return;
     if (view == 'none') {
         menu.classList.add('hidden');
@@ -305,6 +470,8 @@ function view(view) {
     menu.classList.remove('hidden');
     select.classList.toggle('hidden', view != 'select');
     waiting.classList.toggle('hidden', view != 'waiting');
+    if (settingsPanel != null) settingsPanel.classList.toggle('hidden', view != 'settings');
+    if (shopPanel != null) shopPanel.classList.toggle('hidden', view != 'shop');
 }
 function update(timestamp) {
     let dt = 1 / 60;
@@ -381,5 +548,14 @@ window.onload = () => {
     }
     const joinButton = document.getElementById('joinButton');
     if (joinButton != null) joinButton.addEventListener('click', join);
+    const settingsButton = document.getElementById('settingsButton');
+    if (settingsButton != null) settingsButton.addEventListener('click', () => { renderSettings(); view('settings'); });
+    const shopButton = document.getElementById('shopButton');
+    if (shopButton != null) shopButton.addEventListener('click', () => { renderShop(); view('shop'); });
+    const settingsBackButton = document.getElementById('settingsBackButton');
+    if (settingsBackButton != null) settingsBackButton.addEventListener('click', () => view('select'));
+    const shopBackButton = document.getElementById('shopBackButton');
+    if (shopBackButton != null) shopBackButton.addEventListener('click', () => view('select'));
+    updateMoneyHud();
     view('select');
 };

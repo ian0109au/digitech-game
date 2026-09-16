@@ -15,12 +15,18 @@ const linterval = 2000;
 const tickms = 100;
 const ticks = tickms / 1000;
 const LOBBY = 'lobby';
+const surviveRate = 1;
+const leaderRate = 2;
+const killReward = 50;
+const winReward = 500;
+const winGoalY = -5000;
 class ServerPlayer {
     constructor(x, y, color) {
         this.x = x;
         this.y = y;
         this.color = color;
         this.alive = true;
+        this.money = 0;
     }
 }
 const levels = [
@@ -30,6 +36,14 @@ const levels = [
         { dx: 100, dy: -160, width: 80,  height: 15, type: 'pass'  },
         { dx: 400, dy: -220, width: 120, height: 15, type: 'boost' },
         { dx: 200, dy: -320, width: 100, height: 15, type: 'solid' },
+    ],
+    [
+        { dx: 600, dy: 0,    width: 90,  height: 15, type: 'solid' },
+        { dx: 400, dy: -90,  width: 90,  height: 15, type: 'pass'  },
+        { dx: 550, dy: -180, width: 70,  height: 15, type: 'boost' },
+        { dx: 300, dy: -260, width: 110, height: 15, type: 'solid' },
+        { dx: 500, dy: -340, width: 90,  height: 15, type: 'pass'  },
+        { dx: 350, dy: -420, width: 100, height: 15, type: 'solid' },
     ],
 ];
 let roomNum = 0;
@@ -47,6 +61,7 @@ function cRoom() {
         nextLevel: -linterval,
         countdownEndsAt: null,
         countdownTimer: null,
+        winnerId: null,
     };
     return name;
 }
@@ -156,6 +171,20 @@ function updateBot(bot, room, dt) {
     bot.y += bot.jump;
     bot.x = Math.max(0, Math.min(780, bot.x - bot.speed));
 }
+function killPlayer(room, roomName, id) {
+    const player = room.players[id];
+    if (player == null || player.alive === false) return;
+    const before = leader(room.players);
+    player.alive = false;
+    io.to(roomName).emit('die', id);
+    if (before != null && before.id !== id) {
+        const killer = room.players[before.id];
+        if (killer != null && killer.isBot !== true) {
+            killer.money += killReward;
+        }
+    }
+    roundEnd(roomName);
+}
 function botDeath(room, roomName, botId, bot, dt) {
     if (bot.alive == false) return;
 
@@ -163,8 +192,7 @@ function botDeath(room, roomName, botId, bot, dt) {
     if (bot.y > screenBottom) {
         bot.offScreenTimer += dt;
         if (bot.offScreenTimer >= 3) {
-            bot.alive = false;
-            io.to(roomName).emit('die', botId);
+            killPlayer(room, roomName, botId);
         }
     } else {
         bot.offScreenTimer = 0;
@@ -235,17 +263,19 @@ function cleanPlatforms(room) {
     const bottom = room.peakY + Dip;
     room.platforms = room.platforms.filter(p => p.y < bottom);
 }
-function highest(players) {
+function leader(players) {
+    let leadId = null;
     let leadY = null;
     for (let id in players) {
         if (players[id].alive !== false && (leadY === null || players[id].y < leadY)) {
             leadY = players[id].y;
+            leadId = id;
         }
     }
-    return leadY;
+    return leadId == null ? null : { id: leadId, y: leadY };
 }
 function winner(room) {
-    return null;
+    return room.winnerId;
 }
 function startCountdown(roomName) {
     const room = rooms[roomName];
@@ -266,6 +296,7 @@ function resetRoom(roomName) {
     room.platforms = [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }];
     room.peakY = 0;
     room.nextLevel = -linterval;
+    room.winnerId = null;
     for (const id in room.players) {
         const p = room.players[id];
         p.x = 100;
@@ -308,6 +339,7 @@ function emptyRoom(roomName) {
         room.platforms = [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }];
         room.peakY = 0;
         room.nextLevel = -linterval;
+        room.winnerId = null;
     }
 }
 function leaveRoom(socket) {
@@ -369,11 +401,11 @@ setInterval(() => {
     for (const roomName in rooms) {
         const room = rooms[roomName];
         if (room.state !== 'active') continue;
-        const leadY = highest(room.players);
-        if (leadY === null) continue;
-        room.peakY = Math.min(room.peakY, leadY);
+        const lead = leader(room.players);
+        if (lead == null) continue;
+        room.peakY = Math.min(room.peakY, lead.y);
         const before = room.platforms.length;
-        generatePlatforms(room, leadY - frontLook);
+        generatePlatforms(room, lead.y - frontLook);
         const afterGenerate = room.platforms.length;
         cleanPlatforms(room);
         const afterClean = room.platforms.length;
@@ -386,6 +418,23 @@ setInterval(() => {
             updateBot(p, room, ticks);
             botDeath(room, roomName, id, p, ticks);
             io.to(roomName).emit('move', { id, x: p.x, y: p.y });
+        }
+        const moneyChanges = {};
+        for (const id in room.players) {
+            const p = room.players[id];
+            if (p.isBot === true || p.alive === false) continue;
+            p.money += surviveRate * ticks;
+            if (id === lead.id) {
+                p.money += leaderRate * ticks;
+            }
+            if (room.winnerId == null && p.y <= winGoalY) {
+                room.winnerId = id;
+                p.money += winReward;
+            }
+            moneyChanges[id] = Math.floor(p.money);
+        }
+        if (Object.keys(moneyChanges).length > 0) {
+            io.to(roomName).emit('money', moneyChanges);
         }
         roundEnd(roomName);
     }
@@ -411,11 +460,9 @@ io.on('connection', (socket) => {
         const roomName = socket.data.room;
         const room = rooms[roomName];
         if (room != null && room.players[socket.id] != null && room.players[socket.id].alive == true) {
-            room.players[socket.id].alive = false;
-            socket.to(roomName).emit('die', socket.id);
-            socket.join(LOBBY); 
+            killPlayer(room, roomName, socket.id);
+            socket.join(LOBBY);
             socket.emit('roomList', Object.values(rooms).map(roomSummary));
-            roundEnd(roomName);
         }
     });
     socket.on('disconnect', () => {
@@ -425,4 +472,4 @@ io.on('connection', (socket) => {
 });
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`localhost:${PORT}`));
-//server.listen(PORT, () => console.log(`Running on port ${PORT}`)); 
+//server.listen(PORT, () => console.log(`Running on port ${PORT}`));
