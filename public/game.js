@@ -396,7 +396,7 @@ function update(timestamp) {
     }
 
     if (ctx && canvas) {
-        ctx.fillStyle = 'rgb(' +skyr + skyg + skyb + ')';
+        ctx.fillStyle = 'rgb(' + skyr + ', ' + skyg + ', ' + skyb + ')';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.save();
         ctx.translate(0, -camera.y);
