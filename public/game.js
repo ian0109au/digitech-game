@@ -29,14 +29,14 @@ var alivePlayers = {};
 
 var moi = null;
 var myId = null;
-var lastFr = null;
+var lastfr = null;
 
-var gameOn = false;
-var loopOn = false;
-var roomId = null;
+var gameon = false;
+var loopon = false;
+var roomid = null;
 var rstate = 'waiting';
 var cea = null;
-var animId = null;
+var animid = null;
 
 class col {
     static checkAABB(a, b) {
@@ -125,7 +125,6 @@ class Player {
         this.jump = 0;
         this.plotRelevantlessTime = 0;
         socket.emit('guydied');
-        setMenu('select');
     }
     update(dt) {
         if (!this.alive) return;
@@ -274,6 +273,15 @@ function cammove(dt) {
     }
 }
 
+function resetView() {
+    cam.y = 0;
+    cam.peak = 0;
+    lastfr = null;
+    skyb = 255;
+    skyg = 200;
+    skyr = 200;
+}
+
 const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, Space: false};
 const keys2 = { W: false, A: false, S: false, D: false};
 window.addEventListener('keydown', (e) => {
@@ -313,7 +321,7 @@ socket.on('existers', (serverPlayers) => {
             moi.plotRelevantlessTime = 0;
         }
     }
-    tryStartLoop();
+    startloop();
 });
 socket.on('newguy', (data) => {
     players[data.id] = { alive: true, ...data.player };
@@ -338,44 +346,46 @@ socket.on('platforms', (serverPlatforms) => {
 socket.on('rstate', (data) => {
     rstate = data.state;
     cea = data.cea;
-    setMenu(rstate === 'waiting' ? 'waiting' : 'none');
+    if (rstate === 'waiting') resetView();
+    setmenu(rstate === 'waiting' ? 'waiting' : 'none');
 });
 socket.on('roundEnded', () => {
+    resetView();
 });
 
 function pickroom(roomName) {
-    gameOn = true;
-    if (roomId) {
+    gameon = true;
+    if (roomid) {
         socket.emit('switchRoom', roomName);
     } else {
         socket.emit('joinRoom', roomName);
     }
-    roomId = roomName;
+    roomid = roomName;
 }
 
-function leaveRoomNow() {
-    if (roomId) {
+function leaveroom() {
+    if (roomid) {
         socket.emit('leaveRoom');
     }
 
-    gameOn = false;
-    loopOn = false;
-    roomId = null;
+    gameon = false;
+    loopon = false;
+    roomid = null;
     rstate = 'waiting';
     cea = null;
     moi = null;
     players = {};
     alivePlayers = {};
 
-    if (animId !== null) {
-        cancelAnimationFrame(animId);
-        animId = null;
+    if (animid !== null) {
+        cancelAnimationFrame(animid);
+        animid = null;
     }
 
-    setMenu('select');
+    setmenu('select');
 }
 
-function setMenu(view) {
+function setmenu(view) {
     const menu = document.getElementById('menu');
     const select = document.getElementById('serverSelect');
     const waiting = document.getElementById('waitingRoom');
@@ -392,11 +402,11 @@ function setMenu(view) {
 
 function upd(timestamp) {
     var dt = 1 / 60;
-    if (lastFr !== null) {
-        dt = (timestamp - lastFr) / 1000;
+    if (lastfr !== null) {
+        dt = (timestamp - lastfr) / 1000;
         dt = Math.min(dt, 0.1);
     }
-    lastFr = timestamp;
+    lastfr = timestamp;
 
     if (moi) {
         moi.update(dt);
@@ -437,8 +447,13 @@ function upd(timestamp) {
         }
 
         platforms.forEach(platform => {
-            cxt.fillStyle = platform.type === 'solid' ? 'rgb(139, 69, 19)' : 'rgb(34, 139, 34)';
-            cxt.fillStyle = platform.type === 'boost' ? 'rgb(0, 150, 255)' : cxt.fillStyle;
+            if (platform.goal) {
+                cxt.fillStyle = 'rgb(255, 190, 30)';
+            } else if (platform.type === 'boost') {
+                cxt.fillStyle = 'rgb(0, 150, 255)';
+            } else {
+                cxt.fillStyle = platform.type === 'solid' ? 'rgb(139, 69, 19)' : 'rgb(34, 139, 34)';
+            }
             cxt.fillRect(platform.x, platform.y, platform.width, platform.height);
         });
         cxt.restore();
@@ -455,13 +470,13 @@ function upd(timestamp) {
         }
     }
 
-    animId = requestAnimationFrame(upd);
+    animid = requestAnimationFrame(upd);
 }
 
-function tryStartLoop() {
-    if (gameOn && moi && !loopOn) {
-        loopOn = true;
-        animId = requestAnimationFrame(upd);
+function startloop() {
+    if (gameon && moi && !loopon) {
+        loopon = true;
+        animid = requestAnimationFrame(upd);
     }
 }
 
@@ -480,8 +495,8 @@ window.onload = () => {
 
     const leaveButton = document.getElementById('leaveRoomBtn');
     if (leaveButton) {
-        leaveButton.addEventListener('click', leaveRoomNow);
+        leaveButton.addEventListener('click', leaveroom);
     }
 
-    setMenu('select');
+    setmenu('select');
 };

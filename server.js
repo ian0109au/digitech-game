@@ -8,11 +8,21 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-const ROUND_START_DELAY = 30000;
-const DIP = 600;
-const LOOKAHEAD = 800;
+const startdelay = 30000;
+const dip = 600;
+const lookahead = 800;
+const blacksky = -51000;
+const perlevel = 2;
 
-class ServerPlayer {
+const levels = [
+    [
+        { x: 110, y: 0, width: 170, height: 15, type: 'solid' },
+        { x: 420, y: -70, width: 170, height: 15, type: 'pass' },
+        { x: 250, y: -140, width: 220, height: 15, type: 'boost' },
+    ],
+];
+
+class guy {
     constructor(x, y, color) {
         this.x = x;
         this.y = y;
@@ -21,28 +31,57 @@ class ServerPlayer {
     }
 }
 
-function createRoom() {
-    return {
+function createroom() {
+    const room = {
         state: 'waiting',
         players: {},
         platforms: [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }],
         peakY: 0,
         cea: null,
         countdownTimer: null,
+        normalCount: 0,
+        nextLevelY: null,
+        winLevelY: null,
+        goalSpawned: false,
     };
+    preparound(room);
+    return room;
 }
 
 const rooms = {
-    'server-1': createRoom(),
-    'server-2': createRoom(),
-    'server-3': createRoom(),
+    'server-1': createroom(),
+    'server-2': createroom(),
+    'server-3': createroom(),
 };
 
 function random(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function generatePlatforms(platforms, target) {
+function preparound(room) {
+    room.normalCount = 0;
+    room.nextLevelY = -random(20000, Math.abs(blacksky));
+    room.winLevelY = room.nextLevelY;
+    room.goalSpawned = false;
+}
+
+function addlevel(room, levelY) {
+    const level = levels[random(0, levels.length - 1)];
+    for (const platform of level) {
+        room.platforms.push({
+            x: platform.x,
+            y: levelY + platform.y,
+            width: platform.width,
+            height: platform.height,
+            type: platform.type,
+            level: true,
+            goal: levelY === room.winLevelY,
+        });
+    }
+}
+
+function genplats(room, target) {
+    const platforms = room.platforms;
     if (platforms.length === 0) return;
     var highest = platforms.reduce((min, p) => p.y < min.y ? p : min, platforms[0]);
     var current = highest.y;
@@ -65,15 +104,24 @@ function generatePlatforms(platforms, target) {
         }
 
         platforms.push({ x, y: current, width, height: 15, type: typ });
+        room.normalCount++;
+
+        if (!room.goalSpawned && current <= room.winLevelY + 150) {
+            addlevel(room, room.winLevelY);
+            room.goalSpawned = true;
+        } else if (room.normalCount % perlevel === 0 && current > room.nextLevelY) {
+            addlevel(room, current - random(40, 90));
+            room.nextLevelY = current - random(900, 1500);
+        }
     }
 }
 
-function cleanPlatforms(room) {
-    const bottom = room.peakY + DIP;
+function cleanplats(room) {
+    const bottom = room.peakY + dip;
     room.platforms = room.platforms.filter(p => p.y < bottom);
 }
 
-function getLeadY(players) {
+function leady(players) {
     var leadY = null;
     for (var id in players) {
         if (players[id].alive !== false && (leadY === null || players[id].y < leadY)) {
@@ -83,32 +131,40 @@ function getLeadY(players) {
     return leadY;
 }
 
-function checkWinner(room) {
+function checkwin(room) {
+    if (room.winLevelY === null) return null;
+    for (const id in room.players) {
+        const player = room.players[id];
+        if (player.alive !== false && player.y <= room.winLevelY + 20) {
+            return id;
+        }
+    }
     return null;
 }
 
-function startCountdown(roomName) {
+function startcount(roomName) {
     const room = rooms[roomName];
     if (!room) return;
 
     clearTimeout(room.countdownTimer);
     room.state = 'waiting';
-    room.cea = Date.now() + ROUND_START_DELAY;
+    room.cea = Date.now() + startdelay;
 
     io.to(roomName).emit('rstate', { state: room.state, cea: room.cea });
 
     room.countdownTimer = setTimeout(() => {
         room.state = 'active';
         io.to(roomName).emit('rstate', { state: room.state, cea: null });
-    }, ROUND_START_DELAY);
+    }, startdelay);
 }
 
-function resetRoom(roomName) {
+function resetroom(roomName) {
     const room = rooms[roomName];
     if (!room) return;
 
     room.platforms = [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }];
     room.peakY = 0;
+    preparound(room);
 
     for (const id in room.players) {
         room.players[id].x = 100;
@@ -118,10 +174,10 @@ function resetRoom(roomName) {
 
     io.to(roomName).emit('existers', room.players);
     io.to(roomName).emit('platforms', room.platforms);
-    startCountdown(roomName);
+    startcount(roomName);
 }
 
-function checkRoundEnd(roomName) {
+function checkround(roomName) {
     const room = rooms[roomName];
     if (!room || room.state !== 'active') return;
 
@@ -129,15 +185,15 @@ function checkRoundEnd(roomName) {
     if (ids.length === 0) return;
 
     const allDead = ids.every(id => room.players[id].alive === false);
-    const winnerId = checkWinner(room);
+    const winnerId = checkwin(room);
 
     if (allDead || winnerId) {
         io.to(roomName).emit('roundEnded', { winnerId: winnerId || null });
-        resetRoom(roomName);
+        resetroom(roomName);
     }
 }
 
-function checkEmptyRoom(roomName) {
+function emptyroom(roomName) {
     const room = rooms[roomName];
     if (!room) return;
     if (Object.keys(room.players).length === 0) {
@@ -146,10 +202,11 @@ function checkEmptyRoom(roomName) {
         room.cea = null;
         room.platforms = [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }];
         room.peakY = 0;
+        preparound(room);
     }
 }
 
-function joinRoom(socket, roomName) {
+function joinroom(socket, roomName) {
     const room = rooms[roomName];
     if (!room) return;
 
@@ -157,13 +214,13 @@ function joinRoom(socket, roomName) {
     const g = Math.floor(Math.random() * 256);
     const b = Math.floor(Math.random() * 256);
     const color = 'rgb(' + r + ', ' + g + ', ' + b + ')';
-    room.players[socket.id] = new ServerPlayer(100, 500, color);
+    room.players[socket.id] = new guy(100, 500, color);
 
     socket.join(roomName);
     socket.data.room = roomName;
 
     if (Object.keys(room.players).length === 1 && !room.cea) {
-        startCountdown(roomName);
+        startcount(roomName);
     }
 
     socket.emit('existers', room.players);
@@ -172,14 +229,14 @@ function joinRoom(socket, roomName) {
     socket.to(roomName).emit('newguy', { id: socket.id, player: room.players[socket.id] });
 }
 
-function leaveRoom(socket) {
+function leaveroom(socket) {
     const roomName = socket.data.room;
     if (!roomName || !rooms[roomName]) return;
 
     delete rooms[roomName].players[socket.id];
     socket.leave(roomName);
     io.to(roomName).emit('guyleft', socket.id);
-    checkEmptyRoom(roomName);
+    emptyroom(roomName);
     socket.data.room = null;
 }
 setInterval(() => {
@@ -187,37 +244,37 @@ setInterval(() => {
         const room = rooms[roomName];
         if (room.state !== 'active') continue;
 
-        const leadY = getLeadY(room.players);
+        const leadY = leady(room.players);
         if (leadY === null) continue;
 
         room.peakY = Math.min(room.peakY, leadY);
 
         const before = room.platforms.length;
-        generatePlatforms(room.platforms, leadY - LOOKAHEAD);
+        genplats(room, leadY - lookahead);
         const afterGenerate = room.platforms.length;
-        cleanPlatforms(room);
+        cleanplats(room);
         const afterClean = room.platforms.length;
 
         if (afterGenerate !== before || afterClean !== afterGenerate) {
             io.to(roomName).emit('platforms', room.platforms);
         }
 
-        checkRoundEnd(roomName);
+        checkround(roomName);
     }
 }, 300);
 
 io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
 
-    socket.on('joinRoom', (roomName) => joinRoom(socket, roomName));
+    socket.on('joinRoom', (roomName) => joinroom(socket, roomName));
 
     socket.on('switchRoom', (newRoomName) => {
-        leaveRoom(socket);
-        joinRoom(socket, newRoomName);
+        leaveroom(socket);
+        joinroom(socket, newRoomName);
     });
 
     socket.on('leaveRoom', () => {
-        leaveRoom(socket);
+        leaveroom(socket);
     });
 
     socket.on('guymove', (movementData) => {
@@ -236,13 +293,13 @@ io.on('connection', (socket) => {
         if (room && room.players[socket.id] && room.players[socket.id].alive) {
             room.players[socket.id].alive = false;
             socket.to(roomName).emit('guydied', socket.id);
-            checkRoundEnd(roomName);
+            checkround(roomName);
         }
     });
 
     socket.on('disconnect', () => {
         console.log(`Player disconnected: ${socket.id}`);
-        leaveRoom(socket);
+        leaveroom(socket);
     });
 });
 
