@@ -104,6 +104,7 @@ function preparound(room) {
 
 function addlevel(room, levelY) {
     const level = levels[random(0, levels.length - 1)];
+    var top = levelY;
     for (const platform of level) {
         room.platforms.push({
             x: platform.x,
@@ -114,7 +115,9 @@ function addlevel(room, levelY) {
             level: true,
             goal: levelY === room.winLevelY,
         });
+        top = Math.min(top, levelY + platform.y);
     }
+    return top;
 }
 
 function genplats(room, target) {
@@ -144,10 +147,10 @@ function genplats(room, target) {
         room.normalCount++;
 
         if (!room.goalSpawned && current <= room.winLevelY + 150) {
-            addlevel(room, room.winLevelY);
+            current = addlevel(room, room.winLevelY);
             room.goalSpawned = true;
         } else if (room.normalCount % perlevel === 0 && current <= room.nextLevelY) {
-            addlevel(room, current - random(40, 90));
+            current = addlevel(room, current - random(40, 90));
             room.nextLevelY = current - random(900, 1500);
         }
     }
