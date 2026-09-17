@@ -226,6 +226,8 @@ function topPlayer(playerSet) {
 }
 function skycol() {
     skyb = Math.max(0, 255 - Math.abs(camera.y) / 20);
+    skyg = Math.max(0, 200 - Math.abs(camera.y) / 15);
+    skyr = Math.max(0, 200 - Math.abs(camera.y) / 15);
 }
 
 function alivePeople() {
@@ -392,7 +394,7 @@ function update(timestamp) {
     }
 
     if (ctx && canvas) {
-        ctx.fillStyle = 'rgb(0, 0, ' + skyb + ')';
+        ctx.fillStyle = 'rgb(' +skyr + skyg + skyb + ')';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.save();
         ctx.translate(0, -camera.y);
