@@ -64,16 +64,31 @@ function getSets() {
     })
     return values
 }
-
-// not perfect, but good enough for a quick hand-built thing
-
+function getStats() {
+    var stored = {}
+    try {
+        stored = JSON.parse(localStorage.getItem('gameStats')) || {}
+    } catch (e) {
+        stored = {}
+    }
+    return {
+        wins: Number(stored.wins) || 0,
+        kills: Number(stored.kills) || 0,
+        timeSurvived: Number(stored.timeSurvived) || 0,
+        money: Number(stored.money) || cash
+    }
+}
 function saveSet() {
     localStorage.setItem('gameSettings', JSON.stringify(settings))
+}
+function saveStats() {
+    localStorage.setItem('gameStats', JSON.stringify(playerStats))
 }
 function getSet(id) {
     return settings[id]
 }
 const settings = getSets()
+var playerStats = getStats()
 
 
 
@@ -269,6 +284,13 @@ socket.on('currentPlayers', (serverPlayers) => {
             me.offScreenTimer = 0
         }
         cash = sData.money != false ? sData.money : cash
+        playerStats.money = Number(cash) || 0
+        if (sData.stats != null && typeof sData.stats === 'object') {
+            playerStats.wins = Number(sData.stats.wins) || playerStats.wins
+            playerStats.kills = Number(sData.stats.kills) || playerStats.kills
+            playerStats.timeSurvived = Number(sData.stats.timeSurvived) || playerStats.timeSurvived
+        }
+        saveStats()
         localStorage.setItem('gameCash', cash)
         updateMoneyHud()
     }
@@ -294,6 +316,8 @@ socket.on('die', (id) => {
 socket.on('money', (data) => {
     if (data[myId] != false) {
         cash = data[myId]
+        playerStats.money = Number(cash) || 0
+        saveStats()
         localStorage.setItem('gameCash', cash)
         updateMoneyHud()
     }
@@ -315,15 +339,16 @@ socket.on('platforms', (serverPlatforms) => {
 })
 socket.on('roomState', (data) => {
     rstate = data.state;
-    countEnd = data.countdownEndsAt;
+    countEnd = data.countdownEndsAt || false;
+    if (countTimer != false) clearInterval(countTimer)
+    countTimer = false
     if (rstate == 'waiting') {
         resetView()
         showCount()
+        view('waiting')
     } else {
-        if (countTimer != false) clearInterval(countTimer)
-        countTimer = false
+        view('none')
     }
-    view(rstate == 'waiting' ? 'waiting' : 'none');
 });
 socket.on('leftRoom', () => {
     clearClientRoom()
@@ -361,15 +386,18 @@ socket.on('roundEnded', () => {
 function choose(rname) {
     start = true;
     room = rname;
+    view('waiting')
     socket.emit('joinRoom', rname, selectedItemId);
 }
 function Spectate(rname) {
     start = true;
     room = rname;
+    view('waiting')
     socket.emit('spectate', rname);
 }
 function join() {
     start = true;
+    view('waiting')
     socket.emit('join', selectedItemId);
 }
 function leave() {
@@ -387,7 +415,14 @@ function showCount() {
     if (count == false) return
     if (countTimer != false) clearInterval(countTimer)
     var tickCount = () => {
-        if (rstate != 'waiting' || countEnd == false) return
+        if (rstate != 'waiting') {
+            count.textContent = 'Game starts in: 0s'
+            return
+        }
+        if (countEnd == false) {
+            count.textContent = 'Game starts in: 30s'
+            return
+        }
         var left = Math.max(0, Math.ceil((countEnd - Date.now()) / 1000))
         count.textContent = `Game starts in: ${left}s`
     }
@@ -451,71 +486,17 @@ function renderSettings() {
     const container = document.getElementById('settingsListEl');
     if (container == false) return;
     container.innerHTML = '';
-    const char = getCharacter(selectedItemId)
-    const stats = document.createElement('div')
+    const selected = getCharacter(selectedItemId)
+    var stats = document.createElement('div')
     stats.className = 'option-row'
     stats.style.display = 'block'
-    const color = char.stats.color || char.color || 'rgb(255, 255, 255)'
-    stats.innerHTML = `<strong>${char.name} stats</strong><br>Jump height: ${char.stats.jumpHeight}<br>Max speed: ${char.stats.maxSpeed}<br>Acceleration: ${char.stats.acceleration}<br>Gravity: ${char.stats.gravity}<br>Color: ${color}`
+    stats.innerHTML = '<strong>Player stats</strong><br>' +
+        `Wins: ${playerStats.wins}<br>` +
+        `Kills: ${playerStats.kills}<br>` +
+        `Time survived: ${Math.floor(playerStats.timeSurvived)}s<br>` +
+        `Money: $${Math.floor(cash)}<br>` +
+        `Selected class: ${selected.name}`
     container.appendChild(stats)
-    if (settingsSchema.length === 0) {
-        const empty = document.createElement('p');
-        empty.className = 'empty-state';
-        empty.textContent = 'No settings yet — add entries to settingsSchema in game.js.';
-        container.appendChild(empty);
-        return;
-    }
-    settingsSchema.forEach((s) => {
-        const row = document.createElement('div');
-        row.className = 'option-row';
-        const label = document.createElement('span');
-        label.textContent = s.label;
-        row.appendChild(label);
-
-        var input;
-        if (s.type === 'toggle') {
-            input = document.createElement('input');
-            input.type = 'checkbox';
-            input.checked = !!settings[s.id];
-            input.addEventListener('change', () => {
-                settings[s.id] = input.checked;
-                saveSet();
-            });
-        } else if (s.type === 'range') {
-            input = document.createElement('input');
-            input.type = 'range';
-            input.min = s.min != false ? s.min : 0;
-            input.max = s.max != false ? s.max : 100;
-            input.value = settings[s.id];
-            input.addEventListener('input', () => {
-                settings[s.id] = Number(input.value);
-                saveSet();
-            });
-        } else if (s.type === 'select') {
-            input = document.createElement('select');
-            (s.options || []).forEach((opt) => {
-                const o = document.createElement('option');
-                o.value = opt;
-                o.textContent = opt;
-                input.appendChild(o);
-            });
-            input.value = settings[s.id];
-            input.addEventListener('change', () => {
-                settings[s.id] = input.value;
-                saveSet();
-            });
-        } else {
-            input = document.createElement('input');
-            input.type = 'text';
-            input.value = settings[s.id] != false ? settings[s.id] : '';
-            input.addEventListener('input', () => {
-                settings[s.id] = input.value;
-                saveSet();
-            });
-        }
-        row.appendChild(input);
-        container.appendChild(row);
-    });
 }
 function renderShop() {
     const container = document.getElementById('shopListEl');

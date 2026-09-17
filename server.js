@@ -42,6 +42,11 @@ class ServerPlayer {
         this.color = color
         this.alive = true
         this.money = money || 0
+        this.stats = {
+            wins: 0,
+            kills: 0,
+            timeSurvived: 0
+        }
     }
 }
 const levels = [
@@ -126,6 +131,7 @@ function killPlayer(room, roomName, id) {
         const killer = room.players[before.id]
         if (killer != false) {
             killer.money += killReward
+            killer.stats.kills = (killer.stats.kills || 0) + 1
         }
     }
     roundEnd(roomName)
@@ -330,10 +336,12 @@ function payPlayers(name, room, lead) {
         const p = room.players[id]
         if (p.alive === false) continue
         p.money += surviveRate * ticks
+        p.stats.timeSurvived = (p.stats.timeSurvived || 0) + ticks
         if (id === lead.id) p.money += leaderRate * ticks
         if (room.winnerId == false && p.y <= winGoalY) {
             room.winnerId = id
             p.money += winReward
+            p.stats.wins = (p.stats.wins || 0) + 1
         }
         changes[id] = Math.floor(p.money)
     }
