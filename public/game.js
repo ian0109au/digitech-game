@@ -224,10 +224,8 @@ function topPlayer(playerSet) {
     }
     return topPlay;
 }
-function skycol(skyb){
-    skyb = Math.max(0, 255 - camera.y / 20);
-    ctx.fillStyle = 'rgb(0, 0, ' + skyb + ')';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+function skycol() {
+    skyb = Math.max(0, 255 - Math.abs(camera.y) / 20);
 }
 
 function alivePeople() {
@@ -310,7 +308,7 @@ socket.on('currentPlayers', (serverPlayers) => {
             localPlayer.offScreenTimer = 0;
         }
     }
-    tryingLooping();
+    tryStartLoop();
 });
 socket.on('newPlayer', (data) => {
     players[data.id] = { alive: true, ...data.player };
@@ -385,6 +383,7 @@ function update(timestamp) {
 
     alivePlayers = alivePeople();
     cameraU(dt);
+    skycol();
 
     if (rstate === 'waiting' && cea) {
         const secondsLeft = Math.max(0, Math.ceil((cea - Date.now()) / 1000));
@@ -393,7 +392,8 @@ function update(timestamp) {
     }
 
     if (ctx && canvas) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'rgb(0, 0, ' + skyb + ')';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.save();
         ctx.translate(0, -camera.y);
 
@@ -431,10 +431,10 @@ function update(timestamp) {
     requestAnimationFrame(update);
 }
 
-function tryingLooping() {
+function tryStartLoop() {
     if (sgame && localPlayer && !sloop) {
         sloop = true;
-        requestAnimationFrame(update);ƒ
+        requestAnimationFrame(update);
     }
 }
 
