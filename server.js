@@ -21,6 +21,14 @@ const levels = [
         { x: 0, y: -180, width: 800, height: 15, type: 'pass' },
         { x: 0, y: -270, width: 800, height: 15, type: 'pass' },
     ],
+    [
+        { x: 0, y: 0, width: 130, height: 15, type: 'solid' },
+        { x: 670, y: -95, width: 130, height: 15, type: 'solid' },
+        { x: 0, y: -190, width: 130, height: 15, type: 'solid' },
+        { x: 670, y: -285, width: 130, height: 15, type: 'solid' },
+        { x: 0, y: -380, width: 130, height: 15, type: 'solid' },
+        { x: 670, y: -475, width: 130, height: 15, type: 'solid' },
+    ],
 ];
 
 class guy {
