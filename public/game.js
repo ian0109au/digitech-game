@@ -225,7 +225,9 @@ function topPlayer(playerSet) {
     return topPlay;
 }
 function skycol(skyb){
-    skyb = Math.max(255 - camera.y/20, 0)
+    skyb = Math.max(0, 255 - camera.y / 20);
+    ctx.fillStyle = 'rgb(0, 0, ' + skyb + ')';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
 function alivePeople() {
