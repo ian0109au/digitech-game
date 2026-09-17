@@ -1,14 +1,14 @@
 const socket = io();
-var canvas;
-var ctx;
+var canv;
+var cxt;
 const fric = 0.1;
 const accel = 1;
-const maxSpeed = 5;
-var jumpHeight = 5;
+const maxSpd = 5;
+var jumpH = 5;
 var skyb = 255;
 var skyg = 200;
 var skyr = 200;
-const camera = {
+const cam = {
     y: 0,
     width: 800,
     height: 600,
@@ -29,13 +29,14 @@ var alivePlayers = {};
 
 var moi = null;
 var myId = null;
-var Lframe = null;
+var lastFr = null;
 
-var sgame = false;
-var sloop = false;
-var roomUIn = null;
+var gameOn = false;
+var loopOn = false;
+var roomId = null;
 var rstate = 'waiting';
 var cea = null;
+var animId = null;
 
 class col {
     static checkAABB(a, b) {
@@ -65,7 +66,7 @@ class col {
         if (!this.checkAABB(box, platform)) return false;
 
         if (platform.type === 'boost') {
-            jumpHeight = 8;
+            jumpH = 8;
         }
 
         const overlapX = Math.min(box.x + box.width, platform.x + platform.width) - Math.max(box.x, platform.x);
@@ -124,13 +125,13 @@ class Player {
         this.jump = 0;
         this.plotRelevantlessTime = 0;
         socket.emit('guydied');
-        setMenuView('select');
+        setMenu('select');
     }
     update(dt) {
         if (!this.alive) return;
         dt = dt || 1 / 60;
 
-        var check = false;
+            var check = false;
         this.grounded = false;
         for (var platform of platforms) {
             if (platform.type === 'solid') {
@@ -157,7 +158,7 @@ class Player {
         }
 
         const wallLeft = 0;
-        const wallRight = canvas.width - 20;
+        const wallRight = canv.width - 20;
         if (this.x <= wallLeft) {
             this.x = wallLeft;
             this.speed = 0;
@@ -167,10 +168,10 @@ class Player {
             this.speed = 0;
         }
         if ((keys.ArrowUp || keys2.W || keys.Space) && this.grounded) {
-            this.jump -= jumpHeight;
+            this.jump -= jumpH;
             moved = true;
-            if (jumpHeight == 8) {
-                jumpHeight = 5;
+            if (jumpH == 8) {
+                jumpH = 5;
             }
         }
         if (keys.ArrowDown || keys2.S) {
@@ -180,11 +181,11 @@ class Player {
             grav = 0.1;
         }
         if (keys.ArrowLeft || keys2.A) {
-            this.speed = Math.min(this.speed + accel, maxSpeed);
+            this.speed = Math.min(this.speed + accel, maxSpd);
             moved = true;
         }
         if (keys.ArrowRight || keys2.D) {
-            this.speed = Math.max(this.speed - accel, -maxSpeed);
+            this.speed = Math.max(this.speed - accel, -maxSpd);
             moved = true;
         }
         this.jump += grav;
@@ -197,10 +198,10 @@ class Player {
         this.y += this.jump;
         this.x -= this.speed;
 
-        this.screenY = this.y - camera.y;
+        this.screenY = this.y - cam.y;
         if (rstate === 'active') {
             const box = this.getHitbox();
-            const screenBottom = camera.y + camera.height;
+            const screenBottom = cam.y + cam.height;
             if (box.y > screenBottom) {
                 this.plotRelevantlessTime += dt;
                 if (this.plotRelevantlessTime >= 3) {
@@ -217,7 +218,7 @@ class Player {
     }
 }
 
-function topPlayer(playerSet) {
+function topguy(playerSet) {
     var topPlay = null;
     for (var id in playerSet) {
         if (topPlay === null || playerSet[id].y < topPlay.y) {
@@ -227,12 +228,12 @@ function topPlayer(playerSet) {
     return topPlay;
 }
 function skycol() {
-    skyb = Math.max(0, 255 - Math.abs(camera.y) / 200);
-    skyg = Math.max(0, 200 - Math.abs(camera.y) / 150);
-    skyr = Math.max(0, 200 - Math.abs(camera.y) / 150);
+    skyb = Math.max(0, 255 - Math.abs(cam.y) / 200);
+    skyg = Math.max(0, 200 - Math.abs(cam.y) / 150);
+    skyr = Math.max(0, 200 - Math.abs(cam.y) / 150);
 }
 
-function alivePeople() {
+function liveguys() {
     const alive = {};
     for (var id in players) {
         if (players[id] && players[id].alive !== false) {
@@ -242,25 +243,25 @@ function alivePeople() {
     return alive;
 }
 
-function cameraU(dt) {
-    var limit = camera.y;
-    const leadPlayer = topPlayer(alivePlayers);
+function cammove(dt) {
+    var limit = cam.y;
+    const leadPlayer = topguy(alivePlayers);
 
     if (leadPlayer != null) {
-        const screenY = leadPlayer.y - camera.y;
+        const screenY = leadPlayer.y - cam.y;
 
-        if (screenY < camera.paddingTop) {
-            limit = leadPlayer.y - camera.paddingTop;
+        if (screenY < cam.paddingTop) {
+            limit = leadPlayer.y - cam.paddingTop;
         }
-        else if (screenY > camera.height - camera.paddingBottom) {
-            limit = leadPlayer.y - camera.height + camera.paddingBottom;
+        else if (screenY > cam.height - cam.paddingBottom) {
+            limit = leadPlayer.y - cam.height + cam.paddingBottom;
         }
         else {
-            limit = camera.y;
+            limit = cam.y;
         }
 
-        camera.peak = Math.min(camera.peak, limit);
-        var bottom = camera.peak + camera.dip;
+        cam.peak = Math.min(cam.peak, limit);
+        var bottom = cam.peak + cam.dip;
         if (limit > bottom) {
             limit = bottom;
         }
@@ -268,8 +269,8 @@ function cameraU(dt) {
             limit = 0;
         }
 
-        const smoothing = 1 - Math.pow(1 - camera.scroll, dt * 60);
-        camera.y += (limit - camera.y) * smoothing;
+        const smoothing = 1 - Math.pow(1 - cam.scroll, dt * 60);
+        cam.y += (limit - cam.y) * smoothing;
     }
 }
 
@@ -337,22 +338,44 @@ socket.on('platforms', (serverPlatforms) => {
 socket.on('rstate', (data) => {
     rstate = data.state;
     cea = data.cea;
-    setMenuView(rstate === 'waiting' ? 'waiting' : 'none');
+    setMenu(rstate === 'waiting' ? 'waiting' : 'none');
 });
 socket.on('roundEnded', () => {
 });
 
-function chooseServer(roomName) {
-    sgame = true;
-    if (roomUIn) {
+function pickroom(roomName) {
+    gameOn = true;
+    if (roomId) {
         socket.emit('switchRoom', roomName);
     } else {
         socket.emit('joinRoom', roomName);
     }
-    roomUIn = roomName;
+    roomId = roomName;
 }
 
-function setMenuView(view) {
+function leaveRoomNow() {
+    if (roomId) {
+        socket.emit('leaveRoom');
+    }
+
+    gameOn = false;
+    loopOn = false;
+    roomId = null;
+    rstate = 'waiting';
+    cea = null;
+    moi = null;
+    players = {};
+    alivePlayers = {};
+
+    if (animId !== null) {
+        cancelAnimationFrame(animId);
+        animId = null;
+    }
+
+    setMenu('select');
+}
+
+function setMenu(view) {
     const menu = document.getElementById('menu');
     const select = document.getElementById('serverSelect');
     const waiting = document.getElementById('waitingRoom');
@@ -367,13 +390,13 @@ function setMenuView(view) {
     waiting.classList.toggle('hidden', view !== 'waiting');
 }
 
-function update(timestamp) {
+function upd(timestamp) {
     var dt = 1 / 60;
-    if (Lframe !== null) {
-        dt = (timestamp - Lframe) / 1000;
+    if (lastFr !== null) {
+        dt = (timestamp - lastFr) / 1000;
         dt = Math.min(dt, 0.1);
     }
-    Lframe = timestamp;
+    lastFr = timestamp;
 
     if (moi) {
         moi.update(dt);
@@ -385,8 +408,8 @@ function update(timestamp) {
         }
     }
 
-    alivePlayers = alivePeople();
-    cameraU(dt);
+    alivePlayers = liveguys();
+    cammove(dt);
     skycol();
 
     if (rstate === 'waiting' && cea) {
@@ -395,11 +418,11 @@ function update(timestamp) {
         if (countdownEl) countdownEl.textContent = `Game starts in: ${secondsLeft}s`;
     }
 
-    if (ctx && canvas) {
-        ctx.fillStyle = 'rgb(' + skyr + ', ' + skyg + ', ' + skyb + ')';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.save();
-        ctx.translate(0, -camera.y);
+    if (cxt && canv) {
+        cxt.fillStyle = 'rgb(' + skyr + ', ' + skyg + ', ' + skyb + ')';
+        cxt.fillRect(0, 0, canv.width, canv.height);
+        cxt.save();
+        cxt.translate(0, -cam.y);
 
         for (var id in players) {
             const p = players[id];
@@ -409,51 +432,56 @@ function update(timestamp) {
             const isAlive = isSelf ? moi.alive : p.alive !== false;
             const baseColor = isSelf ? (moi.color || 'rgb(0, 255, 0)') : (p.color || 'rgb(255, 255, 255)');
 
-            ctx.fillStyle = isAlive ? baseColor : 'rgba(120, 120, 120, 0.4)';
-            ctx.fillRect(px, py, 20, 20);
+            cxt.fillStyle = isAlive ? baseColor : 'rgba(120, 120, 120, 0.4)';
+            cxt.fillRect(px, py, 20, 20);
         }
 
         platforms.forEach(platform => {
-            ctx.fillStyle = platform.type === 'solid' ? 'rgb(139, 69, 19)' : 'rgb(34, 139, 34)';
-            ctx.fillStyle = platform.type === 'boost' ? 'rgb(0, 150, 255)' : ctx.fillStyle;
-            ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+            cxt.fillStyle = platform.type === 'solid' ? 'rgb(139, 69, 19)' : 'rgb(34, 139, 34)';
+            cxt.fillStyle = platform.type === 'boost' ? 'rgb(0, 150, 255)' : cxt.fillStyle;
+            cxt.fillRect(platform.x, platform.y, platform.width, platform.height);
         });
-        ctx.restore();
+        cxt.restore();
 
         if (moi && !moi.alive) {
-            ctx.save();
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = 'white';
-            ctx.font = 'bold 36px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('You Died', canvas.width / 2, canvas.height / 2);
-            ctx.restore();
+            cxt.save();
+            cxt.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            cxt.fillRect(0, 0, canv.width, canv.height);
+            cxt.fillStyle = 'white';
+            cxt.font = 'bold 36px sans-serif';
+            cxt.textAlign = 'center';
+            cxt.fillText('You Died', canv.width / 2, canv.height / 2);
+            cxt.restore();
         }
     }
 
-    requestAnimationFrame(update);
+    animId = requestAnimationFrame(upd);
 }
 
 function tryStartLoop() {
-    if (sgame && moi && !sloop) {
-        sloop = true;
-        requestAnimationFrame(update);
+    if (gameOn && moi && !loopOn) {
+        loopOn = true;
+        animId = requestAnimationFrame(upd);
     }
 }
 
 window.onload = () => {
-    canvas = document.getElementById('gameCanvas');
+    canv = document.getElementById('gameCanvas');
 
-    if (canvas) {
-        ctx = canvas.getContext('2d');
-        canvas.width = camera.width;
-        canvas.height = camera.height;
+    if (canv) {
+        cxt = canv.getContext('2d');
+        canv.width = cam.width;
+        canv.height = cam.height;
     }
 
     document.querySelectorAll('.serverBtn').forEach((btn) => {
-        btn.addEventListener('click', () => chooseServer(btn.dataset.room));
+        btn.addEventListener('click', () => pickroom(btn.dataset.room));
     });
 
-    setMenuView('select');
+    const leaveButton = document.getElementById('leaveRoomBtn');
+    if (leaveButton) {
+        leaveButton.addEventListener('click', leaveRoomNow);
+    }
+
+    setMenu('select');
 };

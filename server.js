@@ -216,6 +216,10 @@ io.on('connection', (socket) => {
         joinRoom(socket, newRoomName);
     });
 
+    socket.on('leaveRoom', () => {
+        leaveRoom(socket);
+    });
+
     socket.on('guymove', (movementData) => {
         const roomName = socket.data.room;
         const room = rooms[roomName];
