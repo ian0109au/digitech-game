@@ -27,13 +27,13 @@ var platforms = [
 var players = {};
 var alivePlayers = {};
 
-var localPlayer = null;
+var moi = null;
 var myId = null;
-var lastFrameTime = null;
+var Lframe = null;
 
 var sgame = false;
 var sloop = false;
-var currentRoom = null;
+var roomUIn = null;
 var rstate = 'waiting';
 var cea = null;
 
@@ -44,7 +44,7 @@ class col {
                a.y < b.y + b.height &&
                a.y + a.height > b.y;
     }
-    static resolvePass(player, platform) {
+    static fixDaPass(player, platform) {
         const box = player.getHitbox();
 
         if (this.checkAABB(box, platform)) {
@@ -59,7 +59,7 @@ class col {
         }
         return false;
     }
-    static resolveSolid(player, platform) {
+    static fixDaSolid(player, platform) {
         const box = player.getHitbox();
 
         if (!this.checkAABB(box, platform)) return false;
@@ -107,7 +107,7 @@ class Player {
         };
         this.screenY = 0;
         this.alive = true;
-        this.offScreenTimer = 0;
+        this.plotRelevantlessTime = 0;
     }
     getHitbox() {
         return {
@@ -122,8 +122,8 @@ class Player {
         this.alive = false;
         this.speed = 0;
         this.jump = 0;
-        this.offScreenTimer = 0;
-        socket.emit('playerDied');
+        this.plotRelevantlessTime = 0;
+        socket.emit('guydied');
         setMenuView('select');
     }
     update(dt) {
@@ -134,13 +134,13 @@ class Player {
         this.grounded = false;
         for (var platform of platforms) {
             if (platform.type === 'solid') {
-                check = col.resolveSolid(this, platform);
+                check = col.fixDaSolid(this, platform);
             }
             else if (platform.type === 'pass') {
-                check = col.resolvePass(this, platform);
+                check = col.fixDaPass(this, platform);
             }
             else if (platform.type === 'boost') {
-                check = col.resolveSolid(this, platform);
+                check = col.fixDaSolid(this, platform);
             }
             if (check) {
                 break;
@@ -202,17 +202,17 @@ class Player {
             const box = this.getHitbox();
             const screenBottom = camera.y + camera.height;
             if (box.y > screenBottom) {
-                this.offScreenTimer += dt;
-                if (this.offScreenTimer >= 3) {
+                this.plotRelevantlessTime += dt;
+                if (this.plotRelevantlessTime >= 3) {
                     this.die();
                 }
             } else {
-                this.offScreenTimer = 0;
+                this.plotRelevantlessTime = 0;
             }
         }
 
         if (moved) {
-            socket.emit('playerMovement', { x: this.x, y: this.y });
+            socket.emit('guymove', { x: this.x, y: this.y });
         }
     }
 }
@@ -227,9 +227,9 @@ function topPlayer(playerSet) {
     return topPlay;
 }
 function skycol() {
-    skyb = Math.max(0, 255 - Math.abs(camera.y) / 20);
-    skyg = Math.max(0, 200 - Math.abs(camera.y) / 15);
-    skyr = Math.max(0, 200 - Math.abs(camera.y) / 15);
+    skyb = Math.max(0, 255 - Math.abs(camera.y) / 200);
+    skyg = Math.max(0, 200 - Math.abs(camera.y) / 150);
+    skyr = Math.max(0, 200 - Math.abs(camera.y) / 150);
 }
 
 function alivePeople() {
@@ -292,7 +292,7 @@ socket.on('connect', () => {
     myId = socket.id;
 });
 
-socket.on('currentPlayers', (serverPlayers) => {
+socket.on('existers', (serverPlayers) => {
     players = serverPlayers;
     for (var id in players) {
         if (players[id].alive === undefined) players[id].alive = true;
@@ -300,33 +300,33 @@ socket.on('currentPlayers', (serverPlayers) => {
 
     const sData = players[myId];
     if (sData) {
-        if (!localPlayer) {
-            localPlayer = new Player(sData.x, sData.y, sData.color);
+        if (!moi) {
+            moi = new Player(sData.x, sData.y, sData.color);
         } else {
-            localPlayer.x = sData.x;
-            localPlayer.y = sData.y;
-            localPlayer.color = sData.color;
-            localPlayer.alive = sData.alive;
-            localPlayer.speed = 0;
-            localPlayer.jump = 0;
-            localPlayer.offScreenTimer = 0;
+            moi.x = sData.x;
+            moi.y = sData.y;
+            moi.color = sData.color;
+            moi.alive = sData.alive;
+            moi.speed = 0;
+            moi.jump = 0;
+            moi.plotRelevantlessTime = 0;
         }
     }
     tryStartLoop();
 });
-socket.on('newPlayer', (data) => {
+socket.on('newguy', (data) => {
     players[data.id] = { alive: true, ...data.player };
 });
-socket.on('playerMoved', (data) => {
+socket.on('guymoved', (data) => {
     if (players[data.id]) {
         players[data.id].x = data.x;
         players[data.id].y = data.y;
     }
 });
-socket.on('playerDisconnected', (id) => {
+socket.on('guyleft', (id) => {
     delete players[id];
 });
-socket.on('playerDied', (id) => {
+socket.on('guydied', (id) => {
     if (players[id]) {
         players[id].alive = false;
     }
@@ -344,12 +344,12 @@ socket.on('roundEnded', () => {
 
 function chooseServer(roomName) {
     sgame = true;
-    if (currentRoom) {
+    if (roomUIn) {
         socket.emit('switchRoom', roomName);
     } else {
         socket.emit('joinRoom', roomName);
     }
-    currentRoom = roomName;
+    roomUIn = roomName;
 }
 
 function setMenuView(view) {
@@ -369,19 +369,19 @@ function setMenuView(view) {
 
 function update(timestamp) {
     var dt = 1 / 60;
-    if (lastFrameTime !== null) {
-        dt = (timestamp - lastFrameTime) / 1000;
+    if (Lframe !== null) {
+        dt = (timestamp - Lframe) / 1000;
         dt = Math.min(dt, 0.1);
     }
-    lastFrameTime = timestamp;
+    Lframe = timestamp;
 
-    if (localPlayer) {
-        localPlayer.update(dt);
+    if (moi) {
+        moi.update(dt);
         if (players[myId]) {
-            players[myId].x = localPlayer.x;
-            players[myId].y = localPlayer.y;
-            players[myId].color = localPlayer.color;
-            players[myId].alive = localPlayer.alive;
+            players[myId].x = moi.x;
+            players[myId].y = moi.y;
+            players[myId].color = moi.color;
+            players[myId].alive = moi.alive;
         }
     }
 
@@ -403,11 +403,11 @@ function update(timestamp) {
 
         for (var id in players) {
             const p = players[id];
-            const isSelf = id === myId && localPlayer;
-            const px = isSelf ? localPlayer.x : p.x;
-            const py = isSelf ? localPlayer.y : p.y;
-            const isAlive = isSelf ? localPlayer.alive : p.alive !== false;
-            const baseColor = isSelf ? (localPlayer.color || 'rgb(0, 255, 0)') : (p.color || 'rgb(255, 255, 255)');
+            const isSelf = id === myId && moi;
+            const px = isSelf ? moi.x : p.x;
+            const py = isSelf ? moi.y : p.y;
+            const isAlive = isSelf ? moi.alive : p.alive !== false;
+            const baseColor = isSelf ? (moi.color || 'rgb(0, 255, 0)') : (p.color || 'rgb(255, 255, 255)');
 
             ctx.fillStyle = isAlive ? baseColor : 'rgba(120, 120, 120, 0.4)';
             ctx.fillRect(px, py, 20, 20);
@@ -420,7 +420,7 @@ function update(timestamp) {
         });
         ctx.restore();
 
-        if (localPlayer && !localPlayer.alive) {
+        if (moi && !moi.alive) {
             ctx.save();
             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -436,7 +436,7 @@ function update(timestamp) {
 }
 
 function tryStartLoop() {
-    if (sgame && localPlayer && !sloop) {
+    if (sgame && moi && !sloop) {
         sloop = true;
         requestAnimationFrame(update);
     }

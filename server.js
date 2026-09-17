@@ -116,7 +116,7 @@ function resetRoom(roomName) {
         room.players[id].alive = true;
     }
 
-    io.to(roomName).emit('currentPlayers', room.players);
+    io.to(roomName).emit('existers', room.players);
     io.to(roomName).emit('platforms', room.platforms);
     startCountdown(roomName);
 }
@@ -166,10 +166,10 @@ function joinRoom(socket, roomName) {
         startCountdown(roomName);
     }
 
-    socket.emit('currentPlayers', room.players);
+    socket.emit('existers', room.players);
     socket.emit('platforms', room.platforms);
     socket.emit('rstate', { state: room.state, cea: room.cea });
-    socket.to(roomName).emit('newPlayer', { id: socket.id, player: room.players[socket.id] });
+    socket.to(roomName).emit('newguy', { id: socket.id, player: room.players[socket.id] });
 }
 
 function leaveRoom(socket) {
@@ -178,7 +178,7 @@ function leaveRoom(socket) {
 
     delete rooms[roomName].players[socket.id];
     socket.leave(roomName);
-    io.to(roomName).emit('playerDisconnected', socket.id);
+    io.to(roomName).emit('guyleft', socket.id);
     checkEmptyRoom(roomName);
     socket.data.room = null;
 }
@@ -216,22 +216,22 @@ io.on('connection', (socket) => {
         joinRoom(socket, newRoomName);
     });
 
-    socket.on('playerMovement', (movementData) => {
+    socket.on('guymove', (movementData) => {
         const roomName = socket.data.room;
         const room = rooms[roomName];
         if (room && room.players[socket.id]) {
             room.players[socket.id].x = movementData.x;
             room.players[socket.id].y = movementData.y;
-            io.to(roomName).emit('playerMoved', { id: socket.id, x: movementData.x, y: movementData.y });
+            io.to(roomName).emit('guymoved', { id: socket.id, x: movementData.x, y: movementData.y });
         }
     });
 
-    socket.on('playerDied', () => {
+    socket.on('guydied', () => {
         const roomName = socket.data.room;
         const room = rooms[roomName];
         if (room && room.players[socket.id] && room.players[socket.id].alive) {
             room.players[socket.id].alive = false;
-            socket.to(roomName).emit('playerDied', socket.id);
+            socket.to(roomName).emit('guydied', socket.id);
             checkRoundEnd(roomName);
         }
     });
