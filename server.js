@@ -22,12 +22,12 @@ const levels = [
         { x: 0, y: -270, width: 800, height: 15, type: 'pass' },
     ],
     [
-        { x: 0, y: 0, width: 130, height: 15, type: 'solid' },
-        { x: 670, y: -95, width: 130, height: 15, type: 'solid' },
-        { x: 0, y: -190, width: 130, height: 15, type: 'solid' },
-        { x: 670, y: -285, width: 130, height: 15, type: 'solid' },
-        { x: 0, y: -380, width: 130, height: 15, type: 'solid' },
-        { x: 670, y: -475, width: 130, height: 15, type: 'solid' },
+        { x: 0, y: 0, width: 85, height: 360, type: 'solid' },
+        { x: 715, y: -450, width: 85, height: 360, type: 'solid' },
+        { x: 0, y: -900, width: 85, height: 360, type: 'solid' },
+        { x: 715, y: -1350, width: 85, height: 360, type: 'solid' },
+        { x: 0, y: -1800, width: 85, height: 360, type: 'solid' },
+        { x: 715, y: -2250, width: 85, height: 360, type: 'solid' },
     ],
 ];
 
