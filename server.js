@@ -16,9 +16,10 @@ const perlevel = 2;
 
 const levels = [
     [
-        { x: 110, y: 0, width: 170, height: 15, type: 'solid' },
-        { x: 420, y: -70, width: 170, height: 15, type: 'pass' },
-        { x: 250, y: -140, width: 220, height: 15, type: 'boost' },
+        { x: 0, y: 0, width: 800, height: 15, type: 'pass' },
+        { x: 0, y: -90, width: 800, height: 15, type: 'pass' },
+        { x: 0, y: -180, width: 800, height: 15, type: 'pass' },
+        { x: 0, y: -270, width: 800, height: 15, type: 'pass' },
     ],
 ];
 
@@ -60,8 +61,8 @@ function random(min, max) {
 
 function preparound(room) {
     room.normalCount = 0;
-    room.nextLevelY = -random(20000, Math.abs(blacksky));
-    room.winLevelY = room.nextLevelY;
+    room.nextLevelY = -random(350, 600);
+    room.winLevelY = -random(20000, Math.abs(blacksky));
     room.goalSpawned = false;
 }
 
@@ -109,7 +110,7 @@ function genplats(room, target) {
         if (!room.goalSpawned && current <= room.winLevelY + 150) {
             addlevel(room, room.winLevelY);
             room.goalSpawned = true;
-        } else if (room.normalCount % perlevel === 0 && current > room.nextLevelY) {
+        } else if (room.normalCount % perlevel === 0 && current <= room.nextLevelY) {
             addlevel(room, current - random(40, 90));
             room.nextLevelY = current - random(900, 1500);
         }
