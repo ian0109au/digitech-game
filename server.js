@@ -27,7 +27,7 @@ function createRoom() {
         players: {},
         platforms: [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }],
         peakY: 0,
-        countdownEndsAt: null,
+        cea: null,
         countdownTimer: null,
     };
 }
@@ -44,8 +44,8 @@ function random(min, max) {
 
 function generatePlatforms(platforms, target) {
     if (platforms.length === 0) return;
-    let highest = platforms.reduce((min, p) => p.y < min.y ? p : min, platforms[0]);
-    let current = highest.y;
+    var highest = platforms.reduce((min, p) => p.y < min.y ? p : min, platforms[0]);
+    var current = highest.y;
 
     while (current > target) {
         const gap = random(60, 130);
@@ -55,7 +55,7 @@ function generatePlatforms(platforms, target) {
         const xap = random(0, 550);
         const x = random(Math.max(xap, 0), Math.min(xap, 800 - width));
         const ty = random(0, 11);
-        let typ;
+        var typ;
         if (ty >= 6 || xap * gap >= 50000 || gap >= 115 || xap >= 500) {
             typ = 'solid';
         } else if (ty >= 2) {
@@ -74,8 +74,8 @@ function cleanPlatforms(room) {
 }
 
 function getLeadY(players) {
-    let leadY = null;
-    for (let id in players) {
+    var leadY = null;
+    for (var id in players) {
         if (players[id].alive !== false && (leadY === null || players[id].y < leadY)) {
             leadY = players[id].y;
         }
@@ -93,13 +93,13 @@ function startCountdown(roomName) {
 
     clearTimeout(room.countdownTimer);
     room.state = 'waiting';
-    room.countdownEndsAt = Date.now() + ROUND_START_DELAY;
+    room.cea = Date.now() + ROUND_START_DELAY;
 
-    io.to(roomName).emit('roomState', { state: room.state, countdownEndsAt: room.countdownEndsAt });
+    io.to(roomName).emit('rstate', { state: room.state, cea: room.cea });
 
     room.countdownTimer = setTimeout(() => {
         room.state = 'active';
-        io.to(roomName).emit('roomState', { state: room.state, countdownEndsAt: null });
+        io.to(roomName).emit('rstate', { state: room.state, cea: null });
     }, ROUND_START_DELAY);
 }
 
@@ -143,7 +143,7 @@ function checkEmptyRoom(roomName) {
     if (Object.keys(room.players).length === 0) {
         clearTimeout(room.countdownTimer);
         room.state = 'waiting';
-        room.countdownEndsAt = null;
+        room.cea = null;
         room.platforms = [{ x: 0, y: 580, width: 800, height: 20, type: 'solid' }];
         room.peakY = 0;
     }
@@ -153,19 +153,22 @@ function joinRoom(socket, roomName) {
     const room = rooms[roomName];
     if (!room) return;
 
-    const color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+    const r = Math.floor(Math.random() * 256);
+    const g = Math.floor(Math.random() * 256);
+    const b = Math.floor(Math.random() * 256);
+    const color = 'rgb(' + r + ', ' + g + ', ' + b + ')';
     room.players[socket.id] = new ServerPlayer(100, 500, color);
 
     socket.join(roomName);
     socket.data.room = roomName;
 
-    if (Object.keys(room.players).length === 1 && !room.countdownEndsAt) {
+    if (Object.keys(room.players).length === 1 && !room.cea) {
         startCountdown(roomName);
     }
 
     socket.emit('currentPlayers', room.players);
     socket.emit('platforms', room.platforms);
-    socket.emit('roomState', { state: room.state, countdownEndsAt: room.countdownEndsAt });
+    socket.emit('rstate', { state: room.state, cea: room.cea });
     socket.to(roomName).emit('newPlayer', { id: socket.id, player: room.players[socket.id] });
 }
 

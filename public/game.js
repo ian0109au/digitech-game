@@ -1,10 +1,11 @@
 const socket = io();
-let canvas;
-let ctx;
+var canvas;
+var ctx;
 const fric = 0.1;
 const accel = 1;
 const maxSpeed = 5;
-let jumpHeight = 5;
+var jumpHeight = 5;
+var skyb = 255;
 const camera = {
     y: 0,
     width: 800,
@@ -15,24 +16,24 @@ const camera = {
     peak: 0,
     dip: 600
 };
-let grav = 0.1;
+var grav = 0.1;
 
-let platforms = [
+var platforms = [
     { x: 0, y: 580, width: 800, height: 20, type: 'solid' }
 ];
 
-let players = {};
-let alivePlayers = {};
+var players = {};
+var alivePlayers = {};
 
-let localPlayer = null;
-let myId = null;
-let lastFrameTime = null;
+var localPlayer = null;
+var myId = null;
+var lastFrameTime = null;
 
-let gameStarted = false;
-let loopStarted = false;
-let currentRoom = null;
-let roomState = 'waiting';
-let countdownEndsAt = null;
+var sgame = false;
+var sloop = false;
+var currentRoom = null;
+var rstate = 'waiting';
+var cea = null;
 
 class col {
     static checkAABB(a, b) {
@@ -127,9 +128,9 @@ class Player {
         if (!this.alive) return;
         dt = dt || 1 / 60;
 
-        let check = false;
+        var check = false;
         this.grounded = false;
-        for (let platform of platforms) {
+        for (var platform of platforms) {
             if (platform.type === 'solid') {
                 check = col.resolveSolid(this, platform);
             }
@@ -144,7 +145,7 @@ class Player {
             }
         }
 
-        let moved = false;
+        var moved = false;
         if (check) {
             this.jump = 0;
             this.grounded = true;
@@ -195,7 +196,7 @@ class Player {
         this.x -= this.speed;
 
         this.screenY = this.y - camera.y;
-        if (roomState === 'active') {
+        if (rstate === 'active') {
             const box = this.getHitbox();
             const screenBottom = camera.y + camera.height;
             if (box.y > screenBottom) {
@@ -215,18 +216,21 @@ class Player {
 }
 
 function topPlayer(playerSet) {
-    let topPlay = null;
-    for (let id in playerSet) {
+    var topPlay = null;
+    for (var id in playerSet) {
         if (topPlay === null || playerSet[id].y < topPlay.y) {
             topPlay = playerSet[id];
         }
     }
     return topPlay;
 }
+function skycol(skyb){
+    skyb = Math.max(255 - camera.y/20, 0)
+}
 
-function getAlivePlayers() {
+function alivePeople() {
     const alive = {};
-    for (let id in players) {
+    for (var id in players) {
         if (players[id] && players[id].alive !== false) {
             alive[id] = players[id];
         }
@@ -235,7 +239,7 @@ function getAlivePlayers() {
 }
 
 function cameraU(dt) {
-    let limit = camera.y;
+    var limit = camera.y;
     const leadPlayer = topPlayer(alivePlayers);
 
     if (leadPlayer != null) {
@@ -252,7 +256,7 @@ function cameraU(dt) {
         }
 
         camera.peak = Math.min(camera.peak, limit);
-        let bottom = camera.peak + camera.dip;
+        var bottom = camera.peak + camera.dip;
         if (limit > bottom) {
             limit = bottom;
         }
@@ -286,7 +290,7 @@ socket.on('connect', () => {
 
 socket.on('currentPlayers', (serverPlayers) => {
     players = serverPlayers;
-    for (let id in players) {
+    for (var id in players) {
         if (players[id].alive === undefined) players[id].alive = true;
     }
 
@@ -304,7 +308,7 @@ socket.on('currentPlayers', (serverPlayers) => {
             localPlayer.offScreenTimer = 0;
         }
     }
-    tryStartLoop();
+    tryingLooping();
 });
 socket.on('newPlayer', (data) => {
     players[data.id] = { alive: true, ...data.player };
@@ -326,16 +330,16 @@ socket.on('playerDied', (id) => {
 socket.on('platforms', (serverPlatforms) => {
     platforms = serverPlatforms;
 });
-socket.on('roomState', (data) => {
-    roomState = data.state;
-    countdownEndsAt = data.countdownEndsAt;
-    setMenuView(roomState === 'waiting' ? 'waiting' : 'none');
+socket.on('rstate', (data) => {
+    rstate = data.state;
+    cea = data.cea;
+    setMenuView(rstate === 'waiting' ? 'waiting' : 'none');
 });
 socket.on('roundEnded', () => {
 });
 
 function chooseServer(roomName) {
-    gameStarted = true;
+    sgame = true;
     if (currentRoom) {
         socket.emit('switchRoom', roomName);
     } else {
@@ -360,7 +364,7 @@ function setMenuView(view) {
 }
 
 function update(timestamp) {
-    let dt = 1 / 60;
+    var dt = 1 / 60;
     if (lastFrameTime !== null) {
         dt = (timestamp - lastFrameTime) / 1000;
         dt = Math.min(dt, 0.1);
@@ -377,11 +381,11 @@ function update(timestamp) {
         }
     }
 
-    alivePlayers = getAlivePlayers();
+    alivePlayers = alivePeople();
     cameraU(dt);
 
-    if (roomState === 'waiting' && countdownEndsAt) {
-        const secondsLeft = Math.max(0, Math.ceil((countdownEndsAt - Date.now()) / 1000));
+    if (rstate === 'waiting' && cea) {
+        const secondsLeft = Math.max(0, Math.ceil((cea - Date.now()) / 1000));
         const countdownEl = document.getElementById('countdownText');
         if (countdownEl) countdownEl.textContent = `Game starts in: ${secondsLeft}s`;
     }
@@ -391,7 +395,7 @@ function update(timestamp) {
         ctx.save();
         ctx.translate(0, -camera.y);
 
-        for (let id in players) {
+        for (var id in players) {
             const p = players[id];
             const isSelf = id === myId && localPlayer;
             const px = isSelf ? localPlayer.x : p.x;
@@ -425,10 +429,10 @@ function update(timestamp) {
     requestAnimationFrame(update);
 }
 
-function tryStartLoop() {
-    if (gameStarted && localPlayer && !loopStarted) {
-        loopStarted = true;
-        requestAnimationFrame(update);
+function tryingLooping() {
+    if (sgame && localPlayer && !sloop) {
+        sloop = true;
+        requestAnimationFrame(update);ƒ
     }
 }
 
