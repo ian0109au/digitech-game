@@ -6,6 +6,8 @@ const accel = 1;
 const maxSpeed = 5;
 var jumpHeight = 5;
 var skyb = 255;
+var skyg = 200;
+var skyr = 200;
 const camera = {
     y: 0,
     width: 800,
