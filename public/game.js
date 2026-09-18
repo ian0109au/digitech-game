@@ -106,6 +106,7 @@ class col {
 
             if (isFalling && wasAboveBefore) {
                 player.y = platform.y - player.hitbox.offsetY - player.hitbox.height;
+                player.landedOnPlatform = true;
                 return true;
             }
         }
