@@ -1,3 +1,4 @@
+//Initalise multiplayer stuff
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -8,6 +9,7 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
+//Platform variables
 const startdelay = 30000;
 const dip = 600;
 const lookahead = 800;
@@ -27,8 +29,8 @@ const levels = [
         { x: 0, y: -270, width: 800, height: 15, type: 'pass' },
     ],
     [
-        { x: 100, y: 260, width: 700, height: 10, type: 'solid' },
-        { x: 0, y: 0, width: 700, height: 10, type: 'solid' },
+        { x: 100, y: 260, width: 700, height: 15, type: 'solid' },
+        { x: 0, y: 0, width: 700, height: 15, type: 'solid' },
         { x: 700, y: 0, width: 40, height: 210, type: 'solid' },
         { x: 600, y: 50, width: 40, height: 210, type: 'solid' },
         { x: 500, y: 0, width: 40, height: 210, type: 'solid' },
@@ -37,84 +39,85 @@ const levels = [
         { x: 200, y: 50, width: 40, height: 210, type: 'solid' }
     ],
     [
-        { x: 0, y: 600, width: 700, height: 50, type: 'solid' },
+        { x: 0, y: 600, width: 700, height: 15, type: 'solid' },
         { x: 200, y: 500, width: 30, height: 100, type: 'kill' },
         { x: 400, y: 500, width: 30, height: 100, type: 'kill' },
         { x: 600, y: 500, width: 30, height: 100, type: 'kill' },
         { x: 100, y: 250, width: 30, height: 400, type: 'solid' }
     ],
     [
-        { x: 80, y: 270, width: 640, height: 12, type: 'solid' },
-        { x: 80, y: 190, width: 150, height: 12, type: 'solid' },
-        { x: 300, y: 110, width: 150, height: 12, type: 'boost' },
-        { x: 520, y: 30, width: 150, height: 12, type: 'solid' },
+        { x: 80, y: 270, width: 640, height: 15, type: 'solid' },
+        { x: 80, y: 190, width: 150, height: 15, type: 'solid' },
+        { x: 300, y: 110, width: 150, height: 15, type: 'boost' },
+        { x: 520, y: 30, width: 150, height: 15, type: 'solid' },
         { x: 0, y: 30, width: 35, height: 250, type: 'solid' },
         { x: 765, y: 30, width: 35, height: 250, type: 'solid' }
     ],
     [
-        { x: 260, y: 280, width: 280, height: 12, type: 'solid' },
-        { x: 130, y: 200, width: 150, height: 12, type: 'solid' },
-        { x: 520, y: 120, width: 150, height: 12, type: 'boost' },
-        { x: 300, y: 40, width: 160, height: 12, type: 'solid' },
+        { x: 260, y: 280, width: 280, height: 15, type: 'solid' },
+        { x: 130, y: 200, width: 150, height: 15, type: 'solid' },
+        { x: 520, y: 120, width: 150, height: 15, type: 'boost' },
+        { x: 300, y: 40, width: 160, height: 15, type: 'solid' },
         { x: 210, y: 0, width: 35, height: 180, type: 'solid' },
         { x: 555, y: 0, width: 35, height: 100, type: 'solid' }
     ],
     [
-        { x: 40, y: 300, width: 220, height: 12, type: 'solid' },
-        { x: 290, y: 220, width: 220, height: 12, type: 'pass' },
-        { x: 540, y: 140, width: 220, height: 12, type: 'solid' },
-        { x: 290, y: 60, width: 220, height: 12, type: 'boost' },
-        { x: 40, y: 0, width: 220, height: 12, type: 'solid' },
+        { x: 40, y: 300, width: 220, height: 15, type: 'solid' },
+        { x: 290, y: 220, width: 220, height: 15, type: 'pass' },
+        { x: 540, y: 140, width: 220, height: 15, type: 'solid' },
+        { x: 290, y: 60, width: 220, height: 15, type: 'boost' },
+        { x: 40, y: 0, width: 220, height: 15, type: 'solid' },
         { x: 0, y: 0, width: 25, height: 312, type: 'solid' },
         { x: 775, y: 0, width: 25, height: 152, type: 'solid' }
     ],
     [
-        { x: 100, y: 320, width: 600, height: 12, type: 'solid' },
-        { x: 500, y: 240, width: 180, height: 12, type: 'solid' },
-        { x: 260, y: 160, width: 180, height: 12, type: 'solid' },
-        { x: 20, y: 80, width: 180, height: 12, type: 'boost' },
-        { x: 260, y: 0, width: 200, height: 12, type: 'solid' },
+        { x: 100, y: 320, width: 600, height: 15, type: 'solid' },
+        { x: 500, y: 240, width: 180, height: 15, type: 'solid' },
+        { x: 260, y: 160, width: 180, height: 15, type: 'solid' },
+        { x: 20, y: 80, width: 180, height: 15, type: 'boost' },
+        { x: 260, y: 0, width: 200, height: 15, type: 'solid' },
         { x: 0, y: 80, width: 25, height: 252, type: 'solid' },
         { x: 775, y: 0, width: 25, height: 332, type: 'solid' }
     ],
     [
-        { x: 40, y: 320, width: 190, height: 12, type: 'solid' },
-        { x: 300, y: 240, width: 190, height: 12, type: 'boost' },
-        { x: 570, y: 160, width: 190, height: 12, type: 'solid' },
-        { x: 310, y: 80, width: 190, height: 12, type: 'solid' },
-        { x: 40, y: 0, width: 190, height: 12, type: 'solid' },
-        { x: 255, y: 300, width: 35, height: 28, type: 'kill' },
-        { x: 500, y: 220, width: 35, height: 28, type: 'kill' },
-        { x: 255, y: 60, width: 35, height: 28, type: 'kill' }
+        { x: 40, y: 320, width: 190, height: 15, type: 'solid' },
+        { x: 300, y: 240, width: 190, height: 15, type: 'boost' },
+        { x: 570, y: 160, width: 190, height: 15, type: 'solid' },
+        { x: 310, y: 80, width: 190, height: 15, type: 'solid' },
+        { x: 40, y: 0, width: 190, height: 15, type: 'solid' },
+        { x: 255, y: 300, width: 35, height: 15, type: 'kill' },
+        { x: 500, y: 220, width: 35, height: 15, type: 'kill' },
+        { x: 255, y: 60, width: 35, height: 15, type: 'kill' }
     ],
     [
-        { x: 80, y: 320, width: 640, height: 12, type: 'solid' },
-        { x: 80, y: 240, width: 220, height: 12, type: 'pass' },
-        { x: 500, y: 160, width: 220, height: 12, type: 'pass' },
-        { x: 80, y: 80, width: 220, height: 12, type: 'pass' },
-        { x: 500, y: 0, width: 220, height: 12, type: 'boost' },
+        { x: 80, y: 320, width: 640, height: 15, type: 'solid' },
+        { x: 80, y: 240, width: 220, height: 15, type: 'pass' },
+        { x: 500, y: 160, width: 220, height: 15, type: 'pass' },
+        { x: 80, y: 80, width: 220, height: 15, type: 'pass' },
+        { x: 500, y: 0, width: 220, height: 15, type: 'boost' },
         { x: 40, y: 0, width: 28, height: 332, type: 'solid' },
         { x: 732, y: 0, width: 28, height: 332, type: 'solid' },
         { x: 0, y: -100, width: 40, height: 432, type: 'solid' },
         { x: 760, y: -100, width: 40, height: 432, type: 'solid' },
-        { x: 40, y: -100, width: 460, height: 20, type: 'kill' },
-        { x: 720, y: -100, width: 40, height: 20, type: 'kill' }
+        { x: 40, y: -100, width: 460, height: 15, type: 'kill' },
+        { x: 720, y: -100, width: 40, height: 15, type: 'kill' }
     ],
     [
-        { x: 220, y: 320, width: 360, height: 12, type: 'solid' },
-        { x: 220, y: 240, width: 110, height: 12, type: 'solid' },
-        { x: 470, y: 160, width: 110, height: 12, type: 'solid' },
-        { x: 220, y: 80, width: 110, height: 12, type: 'boost' },
-        { x: 470, y: 0, width: 110, height: 12, type: 'solid' },
+        { x: 220, y: 320, width: 360, height: 15, type: 'solid' },
+        { x: 220, y: 240, width: 110, height: 15, type: 'solid' },
+        { x: 470, y: 160, width: 110, height: 15, type: 'solid' },
+        { x: 220, y: 80, width: 110, height: 15, type: 'boost' },
+        { x: 470, y: 0, width: 110, height: 15, type: 'solid' },
         { x: 180, y: -100, width: 25, height: 432, type: 'solid' },
         { x: 595, y: -100, width: 25, height: 432, type: 'solid' },
         { x: 0, y: -100, width: 180, height: 432, type: 'solid' },
         { x: 620, y: -100, width: 180, height: 432, type: 'solid' },
-        { x: 180, y: -100, width: 290, height: 20, type: 'kill' },
-        { x: 580, y: -100, width: 40, height: 20, type: 'kill' }
+        { x: 180, y: -100, width: 290, height: 15, type: 'kill' },
+        { x: 580, y: -100, width: 40, height: 15, type: 'kill' }
     ]
 ];
 
+//Class for players in server
 class guy {
     constructor(x, y, color) {
         this.x = x;
@@ -124,6 +127,7 @@ class guy {
     }
 }
 
+//Makes new room or server in this case (noob, intermediate, pro)
 function createroom() {
     const room = {
         state: 'waiting',
@@ -141,16 +145,19 @@ function createroom() {
     return room;
 }
 
+//rooms list
 const rooms = {
     'server-1': createroom(),
     'server-2': createroom(),
     'server-3': createroom(),
 };
 
+//random function
 function random(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+//creates win height
 function preparound(room) {
     room.normalCount = 0;
     room.nextLevelY = -random(350, 600);
@@ -158,6 +165,7 @@ function preparound(room) {
     room.goalSpawned = false;
 }
 
+//creates new set level
 function addlevel(room, levelY) {
     const level = levels[random(0, levels.length - 1)];
     const levelPlatforms = level.map((platform) => ({
@@ -195,6 +203,7 @@ function addlevel(room, levelY) {
     return top;
 }
 
+//makes new platforms
 function genplats(room, target) {
     const platforms = room.platforms;
     if (platforms.length === 0) return;
@@ -233,11 +242,13 @@ function genplats(room, target) {
     }
 }
 
+//deletes platforms when below dip
 function cleanplats(room) {
     const bottom = room.peakY + dip;
     room.platforms = room.platforms.filter(p => p.y < bottom);
 }
 
+//finds the highest player
 function leady(players) {
     var leadY = null;
     for (var id in players) {
@@ -248,6 +259,7 @@ function leady(players) {
     return leadY;
 }
 
+//checks if a player is on the win
 function checkwin(room) {
     if (room.winLevelY === null) return null;
     for (const id in room.players) {
@@ -259,6 +271,7 @@ function checkwin(room) {
     return null;
 }
 
+//starts the countdown when entering or resetting server
 function startcount(roomName) {
     const room = rooms[roomName];
     if (!room) return;
@@ -275,6 +288,7 @@ function startcount(roomName) {
     }, startdelay);
 }
 
+//resets server
 function resetroom(roomName) {
     const room = rooms[roomName];
     if (!room) return;
@@ -294,6 +308,7 @@ function resetroom(roomName) {
     startcount(roomName);
 }
 
+//checks when the factors that ends rounds
 function checkround(roomName) {
     const room = rooms[roomName];
     if (!room || room.state !== 'active') return;
@@ -310,6 +325,7 @@ function checkround(roomName) {
     }
 }
 
+//resets everything when room empty
 function emptyroom(roomName) {
     const room = rooms[roomName];
     if (!room) return;
@@ -323,6 +339,7 @@ function emptyroom(roomName) {
     }
 }
 
+//puts players into rooms when they join
 function joinroom(socket, roomName, playerWins = 0) {
     const room = rooms[roomName];
     if (!room) return;
@@ -352,6 +369,7 @@ function joinroom(socket, roomName, playerWins = 0) {
     socket.to(roomName).emit('newguy', { id: socket.id, player: room.players[socket.id] });
 }
 
+//pushes players into menu when they leave
 function leaveroom(socket) {
     const roomName = socket.data.room;
     if (!roomName || !rooms[roomName]) return;
@@ -362,6 +380,8 @@ function leaveroom(socket) {
     emptyroom(roomName);
     socket.data.room = null;
 }
+
+//sets interval between the next platform
 setInterval(() => {
     for (const roomName in rooms) {
         const room = rooms[roomName];
@@ -386,6 +406,7 @@ setInterval(() => {
     }
 }, 300);
 
+//emits everything to game.js whenever a player does something
 io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
 
@@ -426,6 +447,7 @@ io.on('connection', (socket) => {
     });
 });
 
+//the ports which controls the link you can join
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`localhost:${PORT}`));
 //server.listen(PORT, () => console.log(`Running on port ${PORT}`)); 

@@ -1,3 +1,4 @@
+//variables
 const socket = io();
 var canv;
 var cxt;
@@ -40,6 +41,7 @@ var animid = null;
 const winsStorageKey = 'velocify-wins';
 var wins = loadWins();
 
+//save/load feature for wins
 function loadWins() {
     const savedWins = Number.parseInt(localStorage.getItem(winsStorageKey), 10);
     return Number.isFinite(savedWins) && savedWins >= 0 ? savedWins : 0;
@@ -49,6 +51,7 @@ function saveWins() {
     localStorage.setItem(winsStorageKey, String(wins));
 }
 
+//changes wins statistic when you win
 function updateWinStat() {
     const winStat = document.getElementById('winStat');
     if (winStat) winStat.textContent = `Wins: ${wins}`;
@@ -61,12 +64,14 @@ function recordWin() {
     updateServerLocks();
 }
 
+//puts the label for wins on your character
 function getWinLabelFont() {
     if (wins >= 100) return 'bold 8px Georgia, serif';
     if (wins >= 10) return 'bold 9px "Courier New", monospace';
     return 'bold 10px sans-serif';
 }
 
+//the win locks on intermediate and pro servers
 function updateServerLocks() {
     document.querySelectorAll('.serverBtn').forEach((button) => {
         const requiredWins = Number(button.dataset.requiredWins || 0);
@@ -79,13 +84,16 @@ function updateServerLocks() {
     });
 }
 
+//collision checks
 class col {
+    //basic collision check
     static checkAABB(a, b) {
         return a.x < b.x + b.width &&
                a.x + a.width > b.x &&
                a.y < b.y + b.height &&
                a.y + a.height > b.y;
     }
+    //pass through platforms reaction
     static fixDaPass(player, platform, previousBox) {
         const box = player.getHitbox();
         const wasAboveBefore = previousBox.y + previousBox.height <= platform.y + 4;
@@ -103,6 +111,7 @@ class col {
         }
         return false;
     }
+    //solid and bounce platforms reaction
     static fixDaSolid(player, platform, previousBox) {
         const box = player.getHitbox();
         const horizontalOverlap = box.x < platform.x + platform.width &&
@@ -165,6 +174,7 @@ class col {
         }
         return true;
     }
+    //kill platforms reaction
     static fixDaKill(player, platform, previousBox) {
         const box = player.getHitbox();
         const sweptBox = {
@@ -181,7 +191,9 @@ class col {
     }
 }
 
+//player class
 class Player {
+    //class variables
     constructor(x, y, color) {
         this.x = x;
         this.y = y;
@@ -199,6 +211,7 @@ class Player {
         this.alive = true;
         this.plotRelevantlessTime = 0;
     }
+    //hitbox
     getHitbox() {
         return {
             x: this.x + this.hitbox.offsetX,
@@ -207,6 +220,7 @@ class Player {
             height: this.hitbox.height
         };
     }
+    //what happens when you die
     die() {
         if (!this.alive) return;
         this.alive = false;
@@ -215,6 +229,7 @@ class Player {
         this.plotRelevantlessTime = 0;
         socket.emit('guydied');
     }
+    //checks movement, when you click keys and gravity and stuff
     update(dt) {
         if (!this.alive) return;
         dt = dt || 1 / 60;
@@ -265,17 +280,27 @@ class Player {
 
         var check = false;
         this.grounded = false;
-        for (var platform of platforms) {
-            if (platform.type === 'kill') {
-                if (col.fixDaKill(this, platform, previousBox)) break;
+        for (var pass = 0; pass < 3; pass++) {
+            var resolvedThisPass = false;
+            for (var platform of platforms) {
+                if (platform.type === 'kill') {
+                    if (col.fixDaKill(this, platform, previousBox)) {
+                        resolvedThisPass = true;
+                        break;
+                    }
+                }
+                else if (platform.type === 'solid' || platform.type === 'boost') {
+                    if (col.fixDaSolid(this, platform, previousBox)) {
+                        check = true;
+                        resolvedThisPass = true;
+                    }
+                }
+                else if (platform.type === 'pass' && col.fixDaPass(this, platform, previousBox)) {
+                    check = true;
+                    resolvedThisPass = true;
+                }
             }
-            else if (platform.type === 'solid' || platform.type === 'boost') {
-                check = col.fixDaSolid(this, platform, previousBox);
-            }
-            else if (platform.type === 'pass') {
-                check = col.fixDaPass(this, platform, previousBox);
-            }
-            if (check) break;
+            if (!this.alive || !resolvedThisPass) break;
         }
 
         if (check) {
@@ -312,6 +337,7 @@ class Player {
     }
 }
 
+//finds highest person
 function topguy(playerSet) {
     var topPlay = null;
     for (var id in playerSet) {
@@ -321,12 +347,14 @@ function topguy(playerSet) {
     }
     return topPlay;
 }
+//changes sky colour based off height
 function skycol() {
     skyb = Math.max(0, 255 - Math.abs(cam.y) / 200);
     skyg = Math.max(0, 200 - Math.abs(cam.y) / 150);
     skyr = Math.max(0, 200 - Math.abs(cam.y) / 150);
 }
 
+//checks who are still alive in the server
 function liveguys() {
     const alive = {};
     for (var id in players) {
@@ -337,6 +365,7 @@ function liveguys() {
     return alive;
 }
 
+//changes the camera based off the position off the highest player
 function cammove(dt) {
     var limit = cam.y;
     const leadPlayer = topguy(alivePlayers);
@@ -368,6 +397,7 @@ function cammove(dt) {
     }
 }
 
+//resets the view every round
 function resetView() {
     cam.y = 0;
     cam.peak = 0;
@@ -377,6 +407,7 @@ function resetView() {
     skyr = 200;
 }
 
+//the listeners that checks if a key is pressed
 const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, Space: false};
 const keys2 = { W: false, A: false, S: false, D: false};
 window.addEventListener('keydown', (e) => {
@@ -392,6 +423,7 @@ window.addEventListener('keyup', (e) => {
     if (keyUpper in keys2) keys2[keyUpper] = false;
 });
 
+//transports info to the server whenever the player does anything or anything happened to them
 socket.on('connect', () => {
     myId = socket.id;
 });
@@ -457,6 +489,7 @@ socket.on('roundEnded', (data) => {
     resetView();
 });
 
+//lets you pick the server
 function pickroom(roomName) {
     const requiredWins = Number(document.querySelector(`[data-room="${roomName}"]`)?.dataset.requiredWins || 0);
     if (wins < requiredWins) return;
@@ -470,6 +503,7 @@ function pickroom(roomName) {
     roomid = roomName;
 }
 
+//lets you leave the server
 function leaveroom() {
     if (roomid) {
         socket.emit('leaveRoom');
@@ -492,6 +526,7 @@ function leaveroom() {
     setmenu('select');
 }
 
+//what you can see on the menu
 function setmenu(view) {
     const menu = document.getElementById('menu');
     const select = document.getElementById('serverSelect');
@@ -507,7 +542,9 @@ function setmenu(view) {
     waiting.classList.toggle('hidden', view !== 'waiting');
 }
 
+//all major functions called, all big checks, every frame
 function upd(timestamp) {
+    //frame checks
     var dt = 1 / 60;
     if (lastfr !== null) {
         dt = (timestamp - lastfr) / 1000;
@@ -515,6 +552,7 @@ function upd(timestamp) {
     }
     lastfr = timestamp;
 
+    //updates stats
     if (moi) {
         moi.update(dt);
         if (players[myId]) {
@@ -529,12 +567,14 @@ function upd(timestamp) {
     cammove(dt);
     skycol();
 
+    //moves countdown
     if (rstate === 'waiting' && cea) {
         const secondsLeft = Math.max(0, Math.ceil((cea - Date.now()) / 1000));
         const countdownEl = document.getElementById('countdownText');
         if (countdownEl) countdownEl.textContent = `Game starts in: ${secondsLeft}s`;
     }
-
+    
+    //changes background colour and draws out platform and players
     if (cxt && canv) {
         cxt.fillStyle = 'rgb(' + skyr + ', ' + skyg + ', ' + skyb + ')';
         cxt.fillRect(0, 0, canv.width, canv.height);
@@ -593,9 +633,11 @@ function upd(timestamp) {
         }
     }
 
+    //starts loop all over
     animid = requestAnimationFrame(upd);
 }
 
+//the first loop start
 function startloop() {
     if (gameon && moi && !loopon) {
         loopon = true;
@@ -603,6 +645,7 @@ function startloop() {
     }
 }
 
+//the setup happening the moment you start the game
 window.onload = () => {
     updateWinStat();
     updateServerLocks();
