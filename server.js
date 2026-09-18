@@ -23,7 +23,7 @@ const levels = [
     ],
     [
         { x: 100, y: 260, width: 700, height: 10, type: 'solid' },
-        { x: 0, y: 0, width: 700, height: 200, type: 'solid' },
+        { x: 0, y: 0, width: 700, height: 10, type: 'solid' },
         { x: 700, y: 0, width: 40, height: 200, type: 'solid' },
         { x: 600, y: 50, width: 40, height: 200, type: 'solid' },
         { x: 500, y: 0, width: 40, height: 200, type: 'solid' },
