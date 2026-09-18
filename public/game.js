@@ -37,6 +37,47 @@ var roomid = null;
 var rstate = 'waiting';
 var cea = null;
 var animid = null;
+const winsStorageKey = 'velocify-wins';
+var wins = loadWins();
+
+function loadWins() {
+    const savedWins = Number.parseInt(localStorage.getItem(winsStorageKey), 10);
+    return Number.isFinite(savedWins) && savedWins >= 0 ? savedWins : 0;
+}
+
+function saveWins() {
+    localStorage.setItem(winsStorageKey, String(wins));
+}
+
+function updateWinStat() {
+    const winStat = document.getElementById('winStat');
+    if (winStat) winStat.textContent = `Wins: ${wins}`;
+}
+
+function recordWin() {
+    wins += 1;
+    saveWins();
+    updateWinStat();
+    updateServerLocks();
+}
+
+function getWinLabelFont() {
+    if (wins >= 100) return 'bold 15px Georgia, serif';
+    if (wins >= 10) return 'bold 13px "Courier New", monospace';
+    return 'bold 11px sans-serif';
+}
+
+function updateServerLocks() {
+    document.querySelectorAll('.serverBtn').forEach((button) => {
+        const requiredWins = Number(button.dataset.requiredWins || 0);
+        const locked = wins < requiredWins;
+        const label = button.dataset.label || button.textContent;
+        button.dataset.label = label.replace(/ \(Need \d+ wins?\)$/, '');
+        button.disabled = locked;
+        button.textContent = locked ? `${button.dataset.label} (Need ${requiredWins} win${requiredWins === 1 ? '' : 's'})` : button.dataset.label;
+        button.title = locked ? `Requires ${requiredWins} win${requiredWins === 1 ? '' : 's'}` : '';
+    });
+}
 
 class col {
     static checkAABB(a, b) {
@@ -329,6 +370,7 @@ socket.on('existers', (serverPlayers) => {
             moi.jump = 0;
             moi.plotRelevantlessTime = 0;
         }
+        moi.wins = wins;
     }
     startloop();
 });
@@ -358,16 +400,27 @@ socket.on('rstate', (data) => {
     if (rstate === 'waiting') resetView();
     setmenu(rstate === 'waiting' ? 'waiting' : 'none');
 });
-socket.on('roundEnded', () => {
+socket.on('roomLocked', ({ requiredWins }) => {
+    gameon = false;
+    setmenu('select');
+    updateServerLocks();
+    const winStat = document.getElementById('winStat');
+    if (winStat) winStat.textContent = `Wins: ${wins} (Need ${requiredWins})`;
+});
+socket.on('roundEnded', (data) => {
+    if (data && data.winnerId === myId) recordWin();
     resetView();
 });
 
 function pickroom(roomName) {
+    const requiredWins = Number(document.querySelector(`[data-room="${roomName}"]`)?.dataset.requiredWins || 0);
+    if (wins < requiredWins) return;
+
     gameon = true;
     if (roomid) {
-        socket.emit('switchRoom', roomName);
+        socket.emit('switchRoom', { roomName, playerWins: wins });
     } else {
-        socket.emit('joinRoom', roomName);
+        socket.emit('joinRoom', roomName, wins);
     }
     roomid = roomName;
 }
@@ -453,6 +506,19 @@ function upd(timestamp) {
 
             cxt.fillStyle = isAlive ? baseColor : 'rgba(120, 120, 120, 0.4)';
             cxt.fillRect(px, py, 20, 20);
+            if (isSelf) {
+                const winLabel = `WINS: ${wins}`;
+                cxt.font = getWinLabelFont();
+                cxt.textAlign = 'center';
+                cxt.lineWidth = 4;
+                cxt.strokeStyle = 'rgb(0, 0, 0)';
+                cxt.strokeText(winLabel, px + 10, py - 7);
+                cxt.lineWidth = 2;
+                cxt.strokeStyle = 'rgb(255, 255, 255)';
+                cxt.strokeText(winLabel, px + 10, py - 7);
+                cxt.fillStyle = 'rgb(255, 255, 255)';
+                cxt.fillText(winLabel, px + 10, py - 7);
+            }
         }
 
         platforms.forEach(platform => {
@@ -492,6 +558,8 @@ function startloop() {
 }
 
 window.onload = () => {
+    updateWinStat();
+    updateServerLocks();
     canv = document.getElementById('gameCanvas');
 
     if (canv) {

@@ -12,10 +12,11 @@
         <div id="serverSelect">
             <h1>Velocify</h1>
             <p class="subtitle">Choose how good you are</p>
+            <p id="winStat" class="win-stat">Wins: 0</p>
             <div class="server-list">
-                <button class="serverBtn" data-room="server-1">Noob Server</button>
-                <button class="serverBtn" data-room="server-2">Intermediate Server</button>
-                <button class="serverBtn" data-room="server-3">Pro Server</button>
+                <button class="serverBtn" data-room="server-1" data-required-wins="0">Noob Server</button>
+                <button class="serverBtn" data-room="server-2" data-required-wins="1">Intermediate Server</button>
+                <button class="serverBtn" data-room="server-3" data-required-wins="10">Pro Server</button>
             </div>
             <button id="quitBtn" class="quitBtn" type="button">Quit</button>
         </div>

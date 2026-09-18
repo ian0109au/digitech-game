@@ -65,6 +65,12 @@ canvas {
     letter-spacing: 2px;
     text-transform: uppercase;
 }
+.win-stat {
+    margin: -12px 0 24px;
+    color: var(--ink);
+    font-size: 18px;
+    font-weight: bold;
+}
 .server-list {
     display: flex;
     gap: 14px;
@@ -113,6 +119,12 @@ canvas {
 .serverBtn:active {
     transform: translateY(4px);
     box-shadow: 0 3px 0 var(--blue-dark), 0 7px 14px rgba(38, 112, 255, 0.18);
+}
+.serverBtn:disabled {
+    background: rgb(160, 169, 184);
+    box-shadow: 0 7px 0 rgb(117, 126, 141);
+    cursor: not-allowed;
+    opacity: 0.78;
 }
 .serverBtn:focus-visible,
 .leaveBtn:focus-visible,

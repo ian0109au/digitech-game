@@ -13,6 +13,11 @@ const dip = 600;
 const lookahead = 800;
 const blacksky = -51000;
 const perlevel = 2;
+const roomWinRequirements = {
+    'server-1': 0,
+    'server-2': 1,
+    'server-3': 10,
+};
 
 const levels = [
     [
@@ -24,20 +29,20 @@ const levels = [
     [
         { x: 100, y: 260, width: 700, height: 10, type: 'solid' },
         { x: 0, y: 0, width: 700, height: 10, type: 'solid' },
-        { x: 700, y: 0, width: 40, height: 200, type: 'solid' },
-        { x: 600, y: 50, width: 40, height: 200, type: 'solid' },
-        { x: 500, y: 0, width: 40, height: 200, type: 'solid' },
-        { x: 400, y: 50, width: 40, height: 200, type: 'solid' },
-        { x: 300, y: 0, width: 40, height: 200, type: 'solid' },
-        { x: 200, y: 50, width: 40, height: 200, type: 'solid' }
+        { x: 700, y: 0, width: 40, height: 210, type: 'solid' },
+        { x: 600, y: 50, width: 40, height: 210, type: 'solid' },
+        { x: 500, y: 0, width: 40, height: 210, type: 'solid' },
+        { x: 400, y: 50, width: 40, height: 210, type: 'solid' },
+        { x: 300, y: 0, width: 40, height: 210, type: 'solid' },
+        { x: 200, y: 50, width: 40, height: 210, type: 'solid' }
     ],
     [
-        { x: 0, y: 0, width: 700, height: 50, type: 'solid' },
-        { x: 200, y: 50, width: 30, height: 100, type: 'kill' },
-        { x: 300, y: 50, width: 30, height: 100, type: 'kill' },
-        { x: 400, y: 50, width: 30, height: 100, type: 'kill' },
-        { x: 500, y: 50, width: 30, height: 100, type: 'kill' },
-        { x: 600, y: 50, width: 30, height: 100, type: 'kill' },
+        { x: 0, y: 600, width: 700, height: 50, type: 'solid' },
+        { x: 200, y: 550, width: 30, height: 100, type: 'kill' },
+        { x: 300, y: 550, width: 30, height: 100, type: 'kill' },
+        { x: 400, y: 550, width: 30, height: 100, type: 'kill' },
+        { x: 500, y: 550, width: 30, height: 100, type: 'kill' },
+        { x: 600, y: 550, width: 30, height: 100, type: 'kill' },
         { x: 700, y: 0, width: 30, height: 400, type: 'solid' }
     ]
 ];
@@ -250,9 +255,15 @@ function emptyroom(roomName) {
     }
 }
 
-function joinroom(socket, roomName) {
+function joinroom(socket, roomName, playerWins = 0) {
     const room = rooms[roomName];
     if (!room) return;
+
+    const requiredWins = roomWinRequirements[roomName] || 0;
+    if (Number(playerWins) < requiredWins) {
+        socket.emit('roomLocked', { roomName, requiredWins });
+        return;
+    }
 
     const r = Math.floor(Math.random() * 256);
     const g = Math.floor(Math.random() * 256);
@@ -310,11 +321,11 @@ setInterval(() => {
 io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
 
-    socket.on('joinRoom', (roomName) => joinroom(socket, roomName));
+    socket.on('joinRoom', (roomName, playerWins) => joinroom(socket, roomName, playerWins));
 
-    socket.on('switchRoom', (newRoomName) => {
+    socket.on('switchRoom', ({ roomName, playerWins }) => {
         leaveroom(socket);
-        joinroom(socket, newRoomName);
+        joinroom(socket, roomName, playerWins);
     });
 
     socket.on('leaveRoom', () => {
