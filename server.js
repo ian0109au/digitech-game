@@ -22,14 +22,14 @@ const levels = [
         { x: 0, y: -270, width: 800, height: 15, type: 'pass' },
     ]
     [
-        { x: 100, y: 260, width: 700, height: 10, type: 'pass' },
-        { x: 0, y: 0, width: 700, height: 200, type: 'pass' },
-        { x: 700, y: 0, width: 40, height: 200, type: 'pass' },
-        { x: 600, y: 50, width: 40, height: 200, type: 'pass' },
-        { x: 500, y: 0, width: 40, height: 200, type: 'pass' },
-        { x: 400, y: 50, width: 40, height: 200, type: 'pass' },
-        { x: 300, y: 0, width: 40, height: 200, type: 'pass' },
-        { x: 200, y: 50, width: 40, height: 200, type: 'pass' }
+        { x: 100, y: 260, width: 700, height: 10, type: 'solid' },
+        { x: 0, y: 0, width: 700, height: 200, type: 'solid' },
+        { x: 700, y: 0, width: 40, height: 200, type: 'solid' },
+        { x: 600, y: 50, width: 40, height: 200, type: 'solid' },
+        { x: 500, y: 0, width: 40, height: 200, type: 'solid' },
+        { x: 400, y: 50, width: 40, height: 200, type: 'solid' },
+        { x: 300, y: 0, width: 40, height: 200, type: 'solid' },
+        { x: 200, y: 50, width: 40, height: 200, type: 'solid' }
     ]
 ];
 
