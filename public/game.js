@@ -137,11 +137,12 @@ class col {
         if (!this.checkAABB(box, platform)) {
             if (horizontalOverlap && crossedTop) {
                 player.y = platform.y - player.hitbox.offsetY - player.hitbox.height;
+                player.landedOnPlatform = true;
                 return true;
             }
             if (horizontalOverlap && crossedBottom) {
                 player.y = platform.y + platform.height - player.hitbox.offsetY;
-                player.jump = 0;
+                player.jump = Math.max(player.jump, 0.1);
                 return true;
             }
             if (crossedLeft) {
@@ -166,9 +167,10 @@ class col {
         } else {
             if (box.y + box.height / 2 < platform.y + platform.height / 2) {
                 player.y -= overlapY;
+                player.landedOnPlatform = true;
             } else {
                 player.y += overlapY;
-                player.jump = 0;
+                player.jump = Math.max(player.jump, 0.1);
 
             }
         }
@@ -209,6 +211,7 @@ class Player {
         };
         this.screenY = 0;
         this.alive = true;
+        this.landedOnPlatform = false;
         this.plotRelevantlessTime = 0;
     }
     //hitbox
@@ -280,6 +283,7 @@ class Player {
 
         var check = false;
         this.grounded = false;
+        this.landedOnPlatform = false;
         for (var pass = 0; pass < 3; pass++) {
             var resolvedThisPass = false;
             for (var platform of platforms) {
@@ -304,8 +308,8 @@ class Player {
         }
 
         if (check) {
-            this.jump = 0;
-            this.grounded = true;
+            this.grounded = this.landedOnPlatform;
+            if (this.grounded) this.jump = 0;
         }
 
         if (this.x <= wallLeft) {

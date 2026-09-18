@@ -39,11 +39,11 @@ const levels = [
         { x: 200, y: 50, width: 40, height: 210, type: 'solid' }
     ],
     [
-        { x: 0, y: 600, width: 700, height: 15, type: 'solid' },
-        { x: 200, y: 500, width: 30, height: 100, type: 'kill' },
-        { x: 400, y: 500, width: 30, height: 100, type: 'kill' },
-        { x: 600, y: 500, width: 30, height: 100, type: 'kill' },
-        { x: 100, y: 250, width: 30, height: 400, type: 'solid' }
+        { x: 0, y: 320, width: 700, height: 15, type: 'solid' },
+        { x: 200, y: 220, width: 30, height: 100, type: 'kill' },
+        { x: 400, y: 220, width: 30, height: 100, type: 'kill' },
+        { x: 600, y: 220, width: 30, height: 100, type: 'kill' },
+        { x: 100, y: 0, width: 30, height: 335, type: 'solid' }
     ],
     [
         { x: 80, y: 270, width: 640, height: 15, type: 'solid' },
