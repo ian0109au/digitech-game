@@ -20,43 +20,7 @@ const levels = [
         { x: 0, y: -90, width: 800, height: 15, type: 'pass' },
         { x: 0, y: -180, width: 800, height: 15, type: 'pass' },
         { x: 0, y: -270, width: 800, height: 15, type: 'pass' },
-    ],
-    [
-        { x: 0, y: 0, width: 150, height: 260, type: 'solid' },
-        { x: 650, y: -330, width: 150, height: 260, type: 'solid' },
-        { x: 0, y: -660, width: 150, height: 260, type: 'solid' },
-        { x: 650, y: -990, width: 150, height: 260, type: 'solid' },
-        { x: 0, y: -1320, width: 150, height: 260, type: 'solid' },
-        { x: 650, y: -1650, width: 150, height: 260, type: 'solid' },
-    ],
-    [
-        { x: 40, y: 0, width: 220, height: 15, type: 'solid' },
-        { x: 270, y: -80, width: 220, height: 15, type: 'pass' },
-        { x: 540, y: -160, width: 220, height: 15, type: 'solid' },
-        { x: 270, y: -240, width: 220, height: 15, type: 'pass' },
-        { x: 40, y: -320, width: 220, height: 15, type: 'solid' },
-    ],
-    [
-        { x: 0, y: 0, width: 360, height: 15, type: 'solid' },
-        { x: 440, y: -85, width: 360, height: 15, type: 'pass' },
-        { x: 0, y: -170, width: 360, height: 15, type: 'solid' },
-        { x: 440, y: -255, width: 360, height: 15, type: 'pass' },
-        { x: 0, y: -340, width: 360, height: 15, type: 'solid' },
-    ],
-    [
-        { x: 100, y: 0, width: 180, height: 15, type: 'boost' },
-        { x: 500, y: -75, width: 180, height: 15, type: 'pass' },
-        { x: 100, y: -150, width: 180, height: 15, type: 'solid' },
-        { x: 500, y: -225, width: 180, height: 15, type: 'boost' },
-        { x: 100, y: -300, width: 180, height: 15, type: 'pass' },
-    ],
-    [
-        { x: 200, y: 0, width: 180, height: 15, type: 'solid' },
-        { x: 420, y: -80, width: 180, height: 15, type: 'solid' },
-        { x: 200, y: -160, width: 180, height: 15, type: 'pass' },
-        { x: 420, y: -240, width: 180, height: 15, type: 'solid' },
-        { x: 200, y: -320, width: 180, height: 15, type: 'boost' },
-    ],
+    ]
 ];
 
 class guy {
@@ -104,18 +68,37 @@ function preparound(room) {
 
 function addlevel(room, levelY) {
     const level = levels[random(0, levels.length - 1)];
+    const levelPlatforms = level.map((platform) => ({
+        x: platform.x,
+        y: levelY + platform.y,
+        width: platform.width,
+        height: platform.height,
+        type: platform.type,
+    }));
+
+    room.platforms = room.platforms.filter((platform) => {
+        if (platform.level) return true;
+
+        return !levelPlatforms.some((levelPlatform) =>
+            platform.x < levelPlatform.x + levelPlatform.width &&
+            platform.x + platform.width > levelPlatform.x &&
+            platform.y < levelPlatform.y + levelPlatform.height &&
+            platform.y + platform.height > levelPlatform.y
+        );
+    });
+
     var top = levelY;
-    for (const platform of level) {
+    for (const platform of levelPlatforms) {
         room.platforms.push({
             x: platform.x,
-            y: levelY + platform.y,
+            y: platform.y,
             width: platform.width,
             height: platform.height,
             type: platform.type,
             level: true,
             goal: levelY === room.winLevelY,
         });
-        top = Math.min(top, levelY + platform.y);
+        top = Math.min(top, platform.y);
     }
     return top;
 }
