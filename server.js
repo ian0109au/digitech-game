@@ -32,14 +32,13 @@ const levels = [
         { x: 200, y: 50, width: 40, height: 200, type: 'solid' }
     ],
     [
-        { x: 0, y: 0, width: 30, height: 220, type: 'solid' },
-        { x: 770, y: 0, width: 30, height: 220, type: 'solid' },
-        { x: 160, y: 210, width: 120, height: 20, type: 'solid' },
-        { x: 520, y: 210, width: 120, height: 20, type: 'solid' },
-        { x: 365, y: 105, width: 70, height: 70, type: 'kill' },
-        { x: 300, y: 75, width: 200, height: 15, type: 'solid' },
-        { x: 160, y: 25, width: 120, height: 15, type: 'solid' },
-        { x: 520, y: 25, width: 120, height: 15, type: 'solid' }
+        { x: 0, y: 0, width: 700, height: 50, type: 'solid' },
+        { x: 200, y: 50, width: 30, height: 100, type: 'kill' },
+        { x: 300, y: 50, width: 30, height: 100, type: 'kill' },
+        { x: 400, y: 50, width: 30, height: 100, type: 'kill' },
+        { x: 500, y: 50, width: 30, height: 100, type: 'kill' },
+        { x: 600, y: 50, width: 30, height: 100, type: 'kill' },
+        { x: 700, y: 0, width: 30, height: 400, type: 'solid' }
     ]
 ];
 
