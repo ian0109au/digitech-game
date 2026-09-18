@@ -41,7 +41,7 @@ const levels = [
         { x: 200, y: 500, width: 30, height: 100, type: 'kill' },
         { x: 400, y: 500, width: 30, height: 100, type: 'kill' },
         { x: 600, y: 500, width: 30, height: 100, type: 'kill' },
-        { x: 700, y: 0, width: 30, height: 400, type: 'solid' }
+        { x: 700, y: 250, width: 30, height: 400, type: 'solid' }
     ],
     [
         { x: 80, y: 270, width: 640, height: 12, type: 'solid' },
@@ -94,7 +94,11 @@ const levels = [
         { x: 80, y: 80, width: 220, height: 12, type: 'pass' },
         { x: 500, y: 0, width: 220, height: 12, type: 'boost' },
         { x: 40, y: 0, width: 28, height: 332, type: 'solid' },
-        { x: 732, y: 0, width: 28, height: 332, type: 'solid' }
+        { x: 732, y: 0, width: 28, height: 332, type: 'solid' },
+        { x: 0, y: -100, width: 40, height: 432, type: 'solid' },
+        { x: 760, y: -100, width: 40, height: 432, type: 'solid' },
+        { x: 40, y: -100, width: 460, height: 20, type: 'kill' },
+        { x: 720, y: -100, width: 40, height: 20, type: 'kill' }
     ],
     [
         { x: 220, y: 320, width: 360, height: 12, type: 'solid' },
@@ -102,8 +106,12 @@ const levels = [
         { x: 470, y: 160, width: 110, height: 12, type: 'solid' },
         { x: 220, y: 80, width: 110, height: 12, type: 'boost' },
         { x: 470, y: 0, width: 110, height: 12, type: 'solid' },
-        { x: 180, y: 0, width: 25, height: 332, type: 'solid' },
-        { x: 595, y: 0, width: 25, height: 332, type: 'solid' }
+        { x: 180, y: -100, width: 25, height: 432, type: 'solid' },
+        { x: 595, y: -100, width: 25, height: 432, type: 'solid' },
+        { x: 0, y: -100, width: 180, height: 432, type: 'solid' },
+        { x: 620, y: -100, width: 180, height: 432, type: 'solid' },
+        { x: 180, y: -100, width: 290, height: 20, type: 'kill' },
+        { x: 580, y: -100, width: 40, height: 20, type: 'kill' }
     ]
 ];
 
