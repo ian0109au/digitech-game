@@ -143,12 +143,17 @@ class col {
             if (horizontalOverlap && crossedBottom) {
                 player.y = platform.y + platform.height - player.hitbox.offsetY;
                 player.jump = Math.max(player.jump, 0.1);
+                player.ceilingContact = true;
                 return true;
             }
             if (crossedLeft) {
                 player.x = platform.x - player.hitbox.offsetX - player.hitbox.width;
+                player.wallContact = true;
+                player.wallSide = 'left';
             } else {
                 player.x = platform.x + platform.width - player.hitbox.offsetX;
+                player.wallContact = true;
+                player.wallSide = 'right';
             }
             player.speed = 0;
             return true;
@@ -160,8 +165,12 @@ class col {
         if (overlapX < overlapY) {
             if (box.x + box.width / 2 < platform.x + platform.width / 2) {
                 player.x -= overlapX;
+                player.wallContact = true;
+                player.wallSide = 'left';
             } else {
                 player.x += overlapX;
+                player.wallContact = true;
+                player.wallSide = 'right';
             }
             player.speed = 0;
         } else {
@@ -171,6 +180,7 @@ class col {
             } else {
                 player.y += overlapY;
                 player.jump = Math.max(player.jump, 0.1);
+                player.ceilingContact = true;
 
             }
         }
@@ -212,6 +222,10 @@ class Player {
         this.screenY = 0;
         this.alive = true;
         this.landedOnPlatform = false;
+        this.wallContact = false;
+        this.wallSide = null;
+        this.ceilingContact = false;
+        this.wallJumpUsed = false;
         this.plotRelevantlessTime = 0;
     }
     //hitbox
@@ -250,7 +264,8 @@ class Player {
             this.x = wallRight;
             this.speed = 0;
         }
-        if ((keys.ArrowUp || keys2.W || keys.Space) && this.grounded) {
+        const jumpInput = keys.ArrowUp || keys2.W || keys.Space;
+        if (jumpInput && this.grounded) {
             this.jump -= jumpH;
             moved = true;
             if (jumpH == 8) {
@@ -284,6 +299,9 @@ class Player {
         var check = false;
         this.grounded = false;
         this.landedOnPlatform = false;
+        this.wallContact = false;
+        this.wallSide = null;
+        this.ceilingContact = false;
         for (var pass = 0; pass < 3; pass++) {
             var resolvedThisPass = false;
             for (var platform of platforms) {
@@ -310,6 +328,14 @@ class Player {
         if (check) {
             this.grounded = this.landedOnPlatform;
             if (this.grounded) this.jump = 0;
+        }
+
+        if (!jumpInput) this.wallJumpUsed = false;
+        if (jumpInput && !this.grounded && this.wallContact && !this.wallJumpUsed) {
+            this.jump = -jumpH;
+            this.speed = this.wallSide === 'left' ? -maxSpd : maxSpd;
+            this.wallJumpUsed = true;
+            moved = true;
         }
 
         if (this.x <= wallLeft) {
