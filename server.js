@@ -38,11 +38,11 @@ const levels = [
     ],
     [
         { x: 0, y: 600, width: 700, height: 50, type: 'solid' },
-        { x: 200, y: 550, width: 30, height: 100, type: 'kill' },
-        { x: 300, y: 550, width: 30, height: 100, type: 'kill' },
-        { x: 400, y: 550, width: 30, height: 100, type: 'kill' },
-        { x: 500, y: 550, width: 30, height: 100, type: 'kill' },
-        { x: 600, y: 550, width: 30, height: 100, type: 'kill' },
+        { x: 200, y: 500, width: 30, height: 100, type: 'kill' },
+        { x: 300, y: 500, width: 30, height: 100, type: 'kill' },
+        { x: 400, y: 500, width: 30, height: 100, type: 'kill' },
+        { x: 500, y: 500, width: 30, height: 100, type: 'kill' },
+        { x: 600, y: 500, width: 30, height: 100, type: 'kill' },
         { x: 700, y: 0, width: 30, height: 400, type: 'solid' }
     ]
 ];
