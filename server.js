@@ -41,7 +41,7 @@ const levels = [
         { x: 200, y: 500, width: 30, height: 100, type: 'kill' },
         { x: 400, y: 500, width: 30, height: 100, type: 'kill' },
         { x: 600, y: 500, width: 30, height: 100, type: 'kill' },
-        { x: 700, y: 250, width: 30, height: 400, type: 'solid' }
+        { x: 100, y: 250, width: 30, height: 400, type: 'solid' }
     ],
     [
         { x: 80, y: 270, width: 640, height: 12, type: 'solid' },

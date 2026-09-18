@@ -86,13 +86,15 @@ class col {
                a.y < b.y + b.height &&
                a.y + a.height > b.y;
     }
-    static fixDaPass(player, platform) {
+    static fixDaPass(player, platform, previousBox) {
         const box = player.getHitbox();
+        const wasAboveBefore = previousBox.y + previousBox.height <= platform.y + 4;
+        const crossedPlatform = previousBox.x < platform.x + platform.width &&
+            previousBox.x + previousBox.width > platform.x &&
+            box.y + box.height >= platform.y;
 
-        if (this.checkAABB(box, platform)) {
+        if (this.checkAABB(box, platform) || (wasAboveBefore && crossedPlatform)) {
             const isFalling = player.jump > 0;
-            const playerFeet = box.y + box.height;
-            const wasAboveBefore = (playerFeet - player.jump) <= platform.y + 4;
 
             if (isFalling && wasAboveBefore) {
                 player.y = platform.y - player.hitbox.offsetY - player.hitbox.height;
@@ -101,13 +103,45 @@ class col {
         }
         return false;
     }
-    static fixDaSolid(player, platform) {
+    static fixDaSolid(player, platform, previousBox) {
         const box = player.getHitbox();
+        const horizontalOverlap = box.x < platform.x + platform.width &&
+            box.x + box.width > platform.x;
+        const crossedTop = previousBox.y + previousBox.height <= platform.y &&
+            box.y + box.height >= platform.y;
+        const crossedBottom = previousBox.y >= platform.y + platform.height &&
+            box.y <= platform.y + platform.height;
+        const crossedLeft = previousBox.x + previousBox.width <= platform.x &&
+            box.x + box.width >= platform.x;
+        const crossedRight = previousBox.x >= platform.x + platform.width &&
+            box.x <= platform.x + platform.width;
+        const crossed = (horizontalOverlap && (crossedTop || crossedBottom)) ||
+            (box.y < platform.y + platform.height && box.y + box.height > platform.y &&
+                (crossedLeft || crossedRight));
 
-        if (!this.checkAABB(box, platform)) return false;
+        if (!this.checkAABB(box, platform) && !crossed) return false;
 
         if (platform.type === 'boost') {
             jumpH = 8;
+        }
+
+        if (!this.checkAABB(box, platform)) {
+            if (horizontalOverlap && crossedTop) {
+                player.y = platform.y - player.hitbox.offsetY - player.hitbox.height;
+                return true;
+            }
+            if (horizontalOverlap && crossedBottom) {
+                player.y = platform.y + platform.height - player.hitbox.offsetY;
+                player.jump = 0;
+                return true;
+            }
+            if (crossedLeft) {
+                player.x = platform.x - player.hitbox.offsetX - player.hitbox.width;
+            } else {
+                player.x = platform.x + platform.width - player.hitbox.offsetX;
+            }
+            player.speed = 0;
+            return true;
         }
 
         const overlapX = Math.min(box.x + box.width, platform.x + platform.width) - Math.max(box.x, platform.x);
@@ -131,8 +165,16 @@ class col {
         }
         return true;
     }
-    static fixDaKill(player, platform) {
-        if (!this.checkAABB(player.getHitbox(), platform)) return false;
+    static fixDaKill(player, platform, previousBox) {
+        const box = player.getHitbox();
+        const sweptBox = {
+            x: Math.min(previousBox.x, box.x),
+            y: Math.min(previousBox.y, box.y),
+            width: Math.max(previousBox.x + previousBox.width, box.x + box.width) - Math.min(previousBox.x, box.x),
+            height: Math.max(previousBox.y + previousBox.height, box.y + box.height) - Math.min(previousBox.y, box.y)
+        };
+
+        if (!this.checkAABB(box, platform) && !this.checkAABB(sweptBox, platform)) return false;
 
         player.die();
         return true;
@@ -177,34 +219,8 @@ class Player {
         if (!this.alive) return;
         dt = dt || 1 / 60;
 
-            var check = false;
-        this.grounded = false;
-        for (var platform of platforms) {
-            if (platform.type === 'kill') {
-                if (col.fixDaKill(this, platform)) break;
-            }
-            else if (platform.type === 'solid') {
-                check = col.fixDaSolid(this, platform);
-            }
-            else if (platform.type === 'pass') {
-                check = col.fixDaPass(this, platform);
-            }
-            else if (platform.type === 'boost') {
-                check = col.fixDaSolid(this, platform);
-            }
-            if (check) {
-                break;
-            }
-        }
-
         var moved = false;
-        if (check) {
-            this.jump = 0;
-            this.grounded = true;
-        }
-        else {
-            this.grounded = false;
-        }
+        const previousBox = this.getHitbox();
 
         const wallLeft = 0;
         const wallRight = canv.width - 20;
@@ -246,6 +262,35 @@ class Player {
         }
         this.y += this.jump;
         this.x -= this.speed;
+
+        var check = false;
+        this.grounded = false;
+        for (var platform of platforms) {
+            if (platform.type === 'kill') {
+                if (col.fixDaKill(this, platform, previousBox)) break;
+            }
+            else if (platform.type === 'solid' || platform.type === 'boost') {
+                check = col.fixDaSolid(this, platform, previousBox);
+            }
+            else if (platform.type === 'pass') {
+                check = col.fixDaPass(this, platform, previousBox);
+            }
+            if (check) break;
+        }
+
+        if (check) {
+            this.jump = 0;
+            this.grounded = true;
+        }
+
+        if (this.x <= wallLeft) {
+            this.x = wallLeft;
+            this.speed = 0;
+        }
+        else if (this.x >= wallRight) {
+            this.x = wallRight;
+            this.speed = 0;
+        }
 
         this.screenY = this.y - cam.y;
         if (rstate === 'active') {
