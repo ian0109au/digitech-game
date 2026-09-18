@@ -30,6 +30,17 @@ const levels = [
         { x: 400, y: 50, width: 40, height: 200, type: 'solid' },
         { x: 300, y: 0, width: 40, height: 200, type: 'solid' },
         { x: 200, y: 50, width: 40, height: 200, type: 'solid' }
+    ],
+    [
+        { x: 0, y: 280, width: 800, height: 10, type: 'solid' },
+        { x: 0, y: 0, width: 30, height: 220, type: 'solid' },
+        { x: 770, y: 0, width: 30, height: 220, type: 'solid' },
+        { x: 160, y: 210, width: 120, height: 20, type: 'solid' },
+        { x: 520, y: 210, width: 120, height: 20, type: 'solid' },
+        { x: 365, y: 105, width: 70, height: 70, type: 'kill' },
+        { x: 300, y: 75, width: 200, height: 15, type: 'solid' },
+        { x: 160, y: 25, width: 120, height: 15, type: 'solid' },
+        { x: 520, y: 25, width: 120, height: 15, type: 'solid' }
     ]
 ];
 
@@ -128,8 +139,10 @@ function genplats(room, target) {
         const x = random(Math.max(xap, 0), Math.min(xap, 800 - width));
         const ty = random(0, 11);
         var typ;
-        if (ty >= 6 || xap * gap >= 50000 || gap >= 115 || xap >= 500) {
+        if (ty >= 6) {
             typ = 'solid';
+        } else if (xap * gap >= 50000 || gap >= 115 || xap >= 500) {
+            typ = 'boost';
         } else if (ty >= 2) {
             typ = 'pass';
         } else {

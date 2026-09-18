@@ -90,6 +90,12 @@ class col {
         }
         return true;
     }
+    static fixDaKill(player, platform) {
+        if (!this.checkAABB(player.getHitbox(), platform)) return false;
+
+        player.die();
+        return true;
+    }
 }
 
 class Player {
@@ -133,7 +139,10 @@ class Player {
             var check = false;
         this.grounded = false;
         for (var platform of platforms) {
-            if (platform.type === 'solid') {
+            if (platform.type === 'kill') {
+                if (col.fixDaKill(this, platform)) break;
+            }
+            else if (platform.type === 'solid') {
                 check = col.fixDaSolid(this, platform);
             }
             else if (platform.type === 'pass') {
@@ -449,6 +458,8 @@ function upd(timestamp) {
         platforms.forEach(platform => {
             if (platform.goal) {
                 cxt.fillStyle = 'rgb(255, 190, 30)';
+            } else if (platform.type === 'kill') {
+                cxt.fillStyle = 'rgb(220, 35, 45)';
             } else if (platform.type === 'boost') {
                 cxt.fillStyle = 'rgb(0, 150, 255)';
             } else {
