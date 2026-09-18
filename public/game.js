@@ -62,9 +62,9 @@ function recordWin() {
 }
 
 function getWinLabelFont() {
-    if (wins >= 100) return 'bold 15px Georgia, serif';
-    if (wins >= 10) return 'bold 13px "Courier New", monospace';
-    return 'bold 11px sans-serif';
+    if (wins >= 100) return 'bold 8px Georgia, serif';
+    if (wins >= 10) return 'bold 9px "Courier New", monospace';
+    return 'bold 10px sans-serif';
 }
 
 function updateServerLocks() {
@@ -507,17 +507,18 @@ function upd(timestamp) {
             cxt.fillStyle = isAlive ? baseColor : 'rgba(120, 120, 120, 0.4)';
             cxt.fillRect(px, py, 20, 20);
             if (isSelf) {
-                const winLabel = `WINS: ${wins}`;
+                const winLabel = String(wins);
                 cxt.font = getWinLabelFont();
                 cxt.textAlign = 'center';
-                cxt.lineWidth = 4;
+                cxt.textBaseline = 'middle';
+                cxt.lineWidth = 3;
                 cxt.strokeStyle = 'rgb(0, 0, 0)';
-                cxt.strokeText(winLabel, px + 10, py - 7);
-                cxt.lineWidth = 2;
+                cxt.strokeText(winLabel, px + 10, py + 10);
+                cxt.lineWidth = 1.5;
                 cxt.strokeStyle = 'rgb(255, 255, 255)';
-                cxt.strokeText(winLabel, px + 10, py - 7);
+                cxt.strokeText(winLabel, px + 10, py + 10);
                 cxt.fillStyle = 'rgb(255, 255, 255)';
-                cxt.fillText(winLabel, px + 10, py - 7);
+                cxt.fillText(winLabel, px + 10, py + 10);
             }
         }
 
