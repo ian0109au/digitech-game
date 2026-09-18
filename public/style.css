@@ -1,0 +1,187 @@
+:root {
+    --ink: rgb(19, 24, 35);
+    --muted: rgb(104, 115, 132);
+    --paper: rgb(247, 249, 252);
+    --line: rgb(222, 228, 237);
+    --blue: rgb(38, 112, 255);
+    --blue-dark: rgb(28, 76, 184);
+    --coral: rgb(239, 91, 82);
+}
+
+body {
+    margin: 0;
+    background: rgb(15, 20, 31);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: "Trebuchet MS", "Avenir Next", sans-serif;
+    overflow: hidden;
+}
+.game-wrap {
+    position: relative;
+    width: min(800px, 100vw);
+    height: min(600px, 100vh);
+    overflow: hidden;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+canvas {
+    background: rgb(255, 255, 255);
+    border: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+#menu {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    background: linear-gradient(135deg, rgba(245, 248, 252, 0.96), rgba(222, 232, 247, 0.94));
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 28px;
+}
+.hidden {
+    display: none !important;
+}
+#menu h1 {
+    margin: 0 0 10px;
+    font-size: clamp(34px, 7vw, 56px);
+    line-height: 0.95;
+    letter-spacing: -2px;
+    text-transform: uppercase;
+}
+#menu .subtitle {
+    margin: 0 0 28px;
+    color: var(--muted);
+    font-size: 15px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+.server-list {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.quitBtn {
+    margin-top: 24px;
+    padding: 11px 18px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.quitBtn:hover {
+    background: var(--ink);
+    color: rgb(255, 255, 255);
+    border-color: var(--ink);
+}
+.serverBtn {
+    min-width: 145px;
+    padding: 15px 22px;
+    font: inherit;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    background: var(--blue);
+    color: rgb(255, 255, 255);
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 7px 0 var(--blue-dark), 0 12px 24px rgba(38, 112, 255, 0.22);
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+.serverBtn:hover {
+    background: rgb(54, 126, 255);
+    transform: translateY(-2px);
+    box-shadow: 0 9px 0 var(--blue-dark), 0 15px 26px rgba(38, 112, 255, 0.25);
+}
+.serverBtn:active {
+    transform: translateY(4px);
+    box-shadow: 0 3px 0 var(--blue-dark), 0 7px 14px rgba(38, 112, 255, 0.18);
+}
+.serverBtn:focus-visible,
+.leaveBtn:focus-visible,
+.quitBtn:focus-visible {
+    outline: 3px solid rgb(255, 190, 66);
+    outline-offset: 4px;
+}
+#countdownText {
+    color: var(--muted);
+    font-size: 18px;
+    margin: 0;
+    text-align: center;
+}
+
+#serverSelect,
+#waitingRoom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+#waitingRoom {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 34px 42px;
+    min-width: min(310px, 100%);
+    box-sizing: border-box;
+    box-shadow: 0 18px 45px rgba(25, 39, 64, 0.18);
+}
+#waitingRoom h1 {
+    font-size: clamp(28px, 6vw, 42px) !important;
+    letter-spacing: -1px !important;
+}
+.leaveBtn {
+    margin-top: 24px;
+    padding: 11px 18px;
+    background: transparent;
+    color: var(--coral);
+    border: 1px solid rgba(239, 91, 82, 0.45);
+    border-radius: 8px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+}
+.leaveBtn:hover {
+    background: var(--coral);
+    color: rgb(255, 255, 255);
+    border-color: var(--coral);
+}
+
+@media (max-width: 520px) {
+    #menu {
+        padding: 20px;
+    }
+    .server-list {
+        width: min(300px, 100%);
+    }
+    .serverBtn {
+        flex: 1 1 100%;
+    }
+    #waitingRoom {
+        min-width: 0;
+        width: min(310px, 100%);
+        padding: 30px 24px;
+    }
+}
