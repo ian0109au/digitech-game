@@ -32,7 +32,6 @@ const levels = [
         { x: 200, y: 50, width: 40, height: 200, type: 'solid' }
     ],
     [
-        { x: 0, y: 280, width: 800, height: 10, type: 'solid' },
         { x: 0, y: 0, width: 30, height: 220, type: 'solid' },
         { x: 770, y: 0, width: 30, height: 220, type: 'solid' },
         { x: 160, y: 210, width: 120, height: 20, type: 'solid' },
