@@ -77,6 +77,25 @@
         flex-wrap: wrap;
         justify-content: center;
     }
+    .quitBtn {
+        margin-top: 24px;
+        padding: 11px 18px;
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: bold;
+        letter-spacing: 0.4px;
+        cursor: pointer;
+        transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+    }
+    .quitBtn:hover {
+        background: var(--ink);
+        color: rgb(255, 255, 255);
+        border-color: var(--ink);
+    }
     .serverBtn {
         min-width: 145px;
         padding: 15px 22px;
@@ -102,7 +121,8 @@
         box-shadow: 0 3px 0 var(--blue-dark), 0 7px 14px rgba(38, 112, 255, 0.18);
     }
     .serverBtn:focus-visible,
-    .leaveBtn:focus-visible {
+    .leaveBtn:focus-visible,
+    .quitBtn:focus-visible {
         outline: 3px solid rgb(255, 190, 66);
         outline-offset: 4px;
     }
@@ -185,6 +205,7 @@
                 <button class="serverBtn" data-room="server-2">Arena 02</button>
                 <button class="serverBtn" data-room="server-3">Arena 03</button>
             </div>
+            <button id="quitBtn" class="quitBtn" type="button">Quit</button>
         </div>
         <div id="waitingRoom" class="hidden">
             <h1>Get Ready</h1>

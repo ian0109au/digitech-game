@@ -498,5 +498,10 @@ window.onload = () => {
         leaveButton.addEventListener('click', leaveroom);
     }
 
+    const quitButton = document.getElementById('quitBtn');
+    if (quitButton) {
+        quitButton.addEventListener('click', () => window.close());
+    }
+
     setmenu('select');
 };
