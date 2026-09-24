@@ -5,7 +5,7 @@ var cxt;
 const fric = 0.1;
 const accel = 1;
 const maxSpd = 5;
-var jumpH = 6;
+var jumpH = 5.5;
 var skyb = 255;
 var skyg = 200;
 var skyr = 200;
