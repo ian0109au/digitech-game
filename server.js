@@ -211,7 +211,7 @@ function genplats(room, target) {
     var current = highest.y;
 
     while (current > target) {
-        const gap = random(60, 130);
+        const gap = random(60, 100);
         current -= gap;
 
         const width = random(60, 180);
